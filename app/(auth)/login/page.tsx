@@ -16,9 +16,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub, FaTwitter } from "react-icons/fa";
-import { FaMeta } from "react-icons/fa6";
 
-export default function RegisterPage() {
+export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -29,18 +28,12 @@ export default function RegisterPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl text-center">
-              Create an account
-            </CardTitle>
+            <CardTitle className="text-2xl text-center">Welcome back</CardTitle>
             <CardDescription className="text-center">
-              Enter your details to create your Billa account
+              Login to your Billa account
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input id="username" placeholder="johndoe" required />
-            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -51,14 +44,19 @@ export default function RegisterPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-green-500 hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <Input id="password" type="password" required />
-              <p className="text-xs text-muted-foreground">
-                Password must be at least 8 characters long
-              </p>
             </div>
             <Button className="w-full bg-green-500 hover:bg-green-600">
-              Create Account
+              Login
             </Button>
 
             <div className="relative my-4">
@@ -78,8 +76,8 @@ export default function RegisterPage() {
                 Google
               </Button>
               <Button variant="outline" className="w-full">
-                <FaMeta className="mr-2 h-4 w-4" />
-                Meta
+                <FaGithub className="mr-2 h-4 w-4" />
+                GitHub
               </Button>
               <Button variant="outline" className="w-full">
                 <FaTwitter className="mr-2 h-4 w-4 text-blue-400" />
@@ -89,9 +87,9 @@ export default function RegisterPage() {
           </CardContent>
           <CardFooter className="flex justify-center">
             <p className="text-sm text-muted-foreground">
-              Already have an account?{" "}
-              <Link href="/login" className="text-green-500 hover:underline">
-                Login
+              Don't have an account?{" "}
+              <Link href="/register" className="text-green-500 hover:underline">
+                Register
               </Link>
             </p>
           </CardFooter>

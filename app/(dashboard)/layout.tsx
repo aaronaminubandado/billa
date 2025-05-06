@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
+import { signOut } from "../(auth)/actions";
 
 export default function DashboardLayout({
   children,
@@ -87,9 +88,11 @@ export default function DashboardLayout({
             <Button variant="ghost" size="icon">
               <UserIcon className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon">
-              <LogOutIcon className="h-5 w-5" />
-            </Button>
+            <form>
+              <Button variant="ghost" size="icon" formAction={signOut}>
+                <LogOutIcon className="h-5 w-5" />
+              </Button>
+            </form>
           </div>
         </div>
       </header>

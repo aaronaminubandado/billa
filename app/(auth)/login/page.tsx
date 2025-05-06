@@ -16,6 +16,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub, FaTwitter } from "react-icons/fa";
+import { login } from "../actions";
 
 export default function LoginPage() {
   return (
@@ -34,11 +35,13 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <form>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
+                name="email"
                 placeholder="john@example.com"
                 required
               />
@@ -53,9 +56,9 @@ export default function LoginPage() {
                   Forgot password?
                 </Link>
               </div>
-              <Input id="password" type="password" required />
+              <Input id="password" type="password" name="password" required />
             </div>
-            <Button className="w-full bg-green-500 hover:bg-green-600">
+            <Button className="w-full bg-green-500 hover:bg-green-600" formAction={login}>
               Login
             </Button>
 
@@ -69,7 +72,7 @@ export default function LoginPage() {
                 </span>
               </div>
             </div>
-
+            </form>
             <div className="grid grid-cols-3 gap-3">
               <Button variant="outline" className="w-full">
                 <FcGoogle className="mr-2 h-4 w-4" />

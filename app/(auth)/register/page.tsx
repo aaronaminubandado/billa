@@ -17,6 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub, FaTwitter } from "react-icons/fa";
 import { FaMeta } from "react-icons/fa6";
+import { signup } from "../actions";
 
 export default function RegisterPage() {
   return (
@@ -37,30 +38,35 @@ export default function RegisterPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input id="username" placeholder="johndoe" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="john@example.com"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" required />
-              <p className="text-xs text-muted-foreground">
-                Password must be at least 8 characters long
-              </p>
-            </div>
-            <Button className="w-full bg-green-500 hover:bg-green-600">
-              Create Account
-            </Button>
-
+            <form>
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input id="username" name="username" placeholder="johndoe" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  name="email"
+                  placeholder="john@example.com"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input id="password" name="password" type="password" required />
+                <p className="text-xs text-muted-foreground">
+                  Password must be at least 8 characters long
+                </p>
+              </div>
+              <Button
+                className="w-full bg-green-500 hover:bg-green-600"
+                formAction={signup}
+              >
+                Create Account
+              </Button>
+            </form>
             <div className="relative my-4">
               <div className="absolute inset-0 flex items-center">
                 <Separator />

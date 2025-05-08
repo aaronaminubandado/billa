@@ -1,11 +1,11 @@
-// Updated layout to support responsive sidebar and top bar
+
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/top-bar";
+import { ThemeProvider } from "@/components/theme-provider";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { cn } from "@/lib/utils";
 
 export default function DashboardLayout({
   children,
@@ -15,33 +15,18 @@ export default function DashboardLayout({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // Auto-collapse sidebar on smaller screens
-  useEffect(() => {
-    if (isMobile) {
-      setSidebarCollapsed(true);
-    }
-  }, [isMobile]);
-
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <TopBar />
-
-      <div className="flex flex-1">
-        <Sidebar
-          collapsed={sidebarCollapsed}
-          setCollapsed={setSidebarCollapsed}
-        />
-
-        <main
-          className={cn(
-            "flex-1 bg-background p-4 md:p-8",
-            // Add bottom padding on mobile to account for bottom navigation
-            isMobile ? "pb-20" : ""
-          )}
-        >
-          {children}
-        </main>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <div className="flex min-h-screen flex-col">
+        <TopBar toggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} />
+        <div className="flex flex-1">
+          <Sidebar
+            collapsed={sidebarCollapsed}
+            setCollapsed={setSidebarCollapsed}
+          />
+          <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6">{children}</main>
+        </div>
       </div>
-    </div>
+    </ThemeProvider>
   );
 }

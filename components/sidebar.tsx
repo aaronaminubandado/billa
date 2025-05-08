@@ -1,21 +1,21 @@
-// Enhanced sidebar with responsive behavior, collapsible functionality, and mobile bottom navigation
+// Updated sidebar with new navigation links
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
-  BarChartIcon,
-  ArrowDownIcon,
-  ArrowUpIcon,
+  HomeIcon,
+  ReceiptIcon,
+  WalletIcon,
   PiggyBankIcon,
   LineChartIcon,
   SettingsIcon,
+  TagIcon,
+  BellIcon,
+  TargetIcon,
   MenuIcon,
-  HomeIcon,
-  WalletIcon,
-  ReceiptIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -27,21 +27,29 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const pathname = usePathname();
-  // Added media query hook to detect mobile viewports
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // Main navigation items
+  // Updated navigation items with new pages
   const navItems = [
     { href: "/dashboard", icon: HomeIcon, label: "Dashboard" },
-    { href: "/transactions", icon: ReceiptIcon, label: "Transactions" }, // Combined expenses/income into transactions
-    { href: "/wallets", icon: WalletIcon, label: "Wallets" },
+    { href: "/transactions", icon: ReceiptIcon, label: "Transactions" },
+    { href: "/wallets", icon: WalletIcon, label: "Wallets" }, // Added wallets page
+    { href: "/categories", icon: TagIcon, label: "Categories" }, // Added categories page
+    { href: "/goals", icon: TargetIcon, label: "Goals" }, // Added goals page
     { href: "/budgeting", icon: PiggyBankIcon, label: "Budgeting" },
     { href: "/reports", icon: LineChartIcon, label: "Reports" },
+    { href: "/notifications", icon: BellIcon, label: "Notifications" }, // Added notifications page
     { href: "/settings", icon: SettingsIcon, label: "Settings" },
   ];
 
   // For mobile, limit to 5 most important items
-  const mobileNavItems = navItems.slice(0, 5);
+  const mobileNavItems = [
+    navItems[0], // Dashboard
+    navItems[1], // Transactions
+    navItems[2], // Wallets
+    navItems[4], // Goals
+    navItems[7], // Notifications
+  ];
 
   // Render bottom navigation for mobile
   if (isMobile) {
@@ -109,7 +117,6 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                   isActive
                     ? "bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400"
                     : "",
-                  // Adjust padding and alignment when collapsed
                   collapsed ? "px-2 justify-center" : ""
                 )}
                 aria-current={isActive ? "page" : undefined}

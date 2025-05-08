@@ -42,7 +42,7 @@ export function TopBar() {
         <div className="flex items-center gap-4">
           <Link href="/dashboard">
             <div className="flex items-center gap-2">
-              <img src="/Billa.png" alt="Billa Logo" className="h-8 w-auto" />
+              {/* <img src="/Billa.png" alt="Billa Logo" className="h-8 w-auto" /> */}
               <h1 className="text-xl font-bold text-green-500 hidden sm:block">
                 Billa
               </h1>

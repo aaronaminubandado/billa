@@ -1,4 +1,4 @@
-// Updated sidebar with new navigation links
+// Updated sidebar with notifications removed
 "use client";
 
 import React from "react";
@@ -13,9 +13,8 @@ import {
   LineChartIcon,
   SettingsIcon,
   TagIcon,
-  BellIcon,
   TargetIcon,
-  MenuIcon,
+  Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -29,16 +28,15 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const pathname = usePathname();
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // Updated navigation items with new pages
+  // Updated navigation items with notifications removed
   const navItems = [
     { href: "/dashboard", icon: HomeIcon, label: "Dashboard" },
     { href: "/transactions", icon: ReceiptIcon, label: "Transactions" },
-    { href: "/wallets", icon: WalletIcon, label: "Wallets" }, // Added wallets page
-    { href: "/categories", icon: TagIcon, label: "Categories" }, // Added categories page
-    { href: "/goals", icon: TargetIcon, label: "Goals" }, // Added goals page
+    { href: "/wallets", icon: WalletIcon, label: "Wallets" },
+    { href: "/categories", icon: TagIcon, label: "Categories" },
+    { href: "/goals", icon: TargetIcon, label: "Goals" },
     { href: "/budgeting", icon: PiggyBankIcon, label: "Budgeting" },
     { href: "/reports", icon: LineChartIcon, label: "Reports" },
-    { href: "/notifications", icon: BellIcon, label: "Notifications" }, // Added notifications page
     { href: "/settings", icon: SettingsIcon, label: "Settings" },
   ];
 
@@ -47,8 +45,8 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
     navItems[0], // Dashboard
     navItems[1], // Transactions
     navItems[2], // Wallets
+    navItems[3], // Categories
     navItems[4], // Goals
-    navItems[7], // Notifications
   ];
 
   // Render bottom navigation for mobile
@@ -100,7 +98,7 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
           onClick={() => setCollapsed(!collapsed)}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          <MenuIcon className="h-5 w-5" />
+          <Menu className="h-5 w-5" />
         </Button>
       </div>
       <nav className="p-2 space-y-2">

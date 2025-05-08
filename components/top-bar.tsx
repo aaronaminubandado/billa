@@ -55,23 +55,25 @@ export function TopBar({ toggleSidebar }: TopBarProps) {
     setMounted(true);
   }, []);
 
-  async function signOut() {
+  const signOut = async () => {
     const { error } = await supabase.auth.signOut();
 
     if (error) {
       toast.error("Logout failed, try again later");
-      return;
+      return false;
     }
 
     toast.success("Logout successful");
-  }
-
-  // Handle logout
-  const handleLogout = () => {
-    signOut();
-    router.push("/login");
+    return true;
   };
 
+  const handleLogout = async () => {
+    const success = await signOut();
+    if (success) {
+      router.push("/login");
+    }
+  };
+  
   // Handle mark all as read
   const handleMarkAllAsRead = () => {
     // TODO: Implement actual mark all as read with Supabase

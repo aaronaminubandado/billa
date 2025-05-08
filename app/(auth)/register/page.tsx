@@ -1,11 +1,14 @@
-// Enhanced register page with dark mode support
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { signup } from "../actions";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner"; // Optional toast feedback
+
 import {
   Card,
   CardContent,
@@ -14,21 +17,46 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { FcGoogle } from "react-icons/fc";
-import { FaGithub, FaTwitter } from "react-icons/fa";
 import { FaMeta } from "react-icons/fa6";
-import { signup } from "../actions";
+import { FaTwitter } from "react-icons/fa";
+import { formSchema, SignupFormData } from "@/lib/validation";
 
 export default function RegisterPage() {
+  const router = useRouter();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<SignupFormData>({
+    resolver: zodResolver(formSchema),
+  });
+
+  //Form submission handler
+  const onSubmit = async (data: SignupFormData) => {
+    const formData = new FormData();
+    formData.append("email", data.email);
+    formData.append("password", data.password);
+
+    const result = await signup(formData);
+
+    if (result?.success) {
+      toast.success(result.message);
+      router.push("/login");
+    } else {
+      toast.error("Signup failed. Try again.");
+    }
+  };
+
   return (
-    // Updated background and text colors to support dark mode
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          {/* <div className="flex justify-center mb-2">
-            <img src="/Billa.png" alt="Billa Logo" className="h-12 w-auto" />
-          </div> */}
           <h1 className="text-3xl font-bold text-green-500">Billa</h1>
           <p className="text-muted-foreground">Personal Expense Tracker</p>
         </div>
@@ -42,50 +70,71 @@ export default function RegisterPage() {
               Enter your details to create your Billa account
             </CardDescription>
           </CardHeader>
+
           <CardContent className="space-y-4">
-            <form>
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              {/* Updated input to respect dark mode */}
-              <Input
-                id="username"
-                name="username"
-                placeholder="johndoe"
-                required
-                className="bg-background"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              {/* Updated input to respect dark mode */}
-              <Input
-                id="email"
-                type="email"
-                name="email"
-                placeholder="john@example.com"
-                required
-                className="bg-background"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              {/* Updated input to respect dark mode */}
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="bg-background"
-              />
-              <p className="text-xs text-muted-foreground">
-                Password must be at least 8 characters long
-              </p>
-            </div>
-            <Button className="w-full bg-green-500 hover:bg-green-600"
-            formAction={signup}>
-              Create Account
-            </Button>
+            {/* Attach handleSubmit from react-hook-form */}
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {/* Username Field */}
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  {...register("username")}
+                  placeholder="johndoe"
+                  className="bg-background"
+                />
+                {errors.username && (
+                  <p className="text-sm text-red-500">
+                    {errors.username.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Email Field */}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  {...register("email")}
+                  placeholder="john@example.com"
+                  className="bg-background"
+                />
+                {errors.email && (
+                  <p className="text-sm text-red-500">{errors.email.message}</p>
+                )}
+              </div>
+
+              {/* Password Field */}
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  {...register("password")}
+                  className="bg-background"
+                />
+                {errors.password && (
+                  <p className="text-sm text-red-500">
+                    {errors.password.message}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Password must be at least 8 characters long
+                </p>
+              </div>
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-green-500 hover:bg-green-600"
+              >
+                {isSubmitting ? "Creating account..." : "Create Account"}
+              </Button>
             </form>
+
+            {/* Social Sign-in Options */}
             <div className="relative my-4">
               <div className="absolute inset-0 flex items-center">
                 <Separator />
@@ -112,6 +161,7 @@ export default function RegisterPage() {
               </Button>
             </div>
           </CardContent>
+
           <CardFooter className="flex justify-center">
             <p className="text-sm text-muted-foreground">
               Already have an account?{" "}

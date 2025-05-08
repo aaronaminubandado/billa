@@ -1,11 +1,13 @@
-// Enhanced login page with dark mode support
 "use client";
 
 import React from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { loginSchema, LoginFormData } from "@/lib/validation";
+import { login } from "../actions";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -14,15 +16,40 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { FcGoogle } from "react-icons/fc";
 import { FaMeta } from "react-icons/fa6";
 import { FaTwitter } from "react-icons/fa";
-import { login } from "../actions";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
+
+  const onSubmit = async (data: LoginFormData) => {
+    const formData = new FormData();
+    formData.append("email", data.email);
+    formData.append("password", data.password);
+
+    const result = await login(formData);
+
+    if (result.success) {
+      toast.success("Welcome back!");
+      router.push("/");
+    } else {
+      toast.error(result.error || "Login failed.");
+    }
+  };
+
   return (
-    // Updated background and text colors to support dark mode
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
@@ -41,19 +68,21 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <form>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                {/*  Updated input to respect dark mode */}
                 <Input
                   id="email"
                   type="email"
-                  name="email"
+                  {...register("email")}
                   placeholder="john@example.com"
-                  required
                   className="bg-background"
                 />
+                {errors.email && (
+                  <p className="text-sm text-red-500">{errors.email.message}</p>
+                )}
               </div>
+
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
@@ -64,20 +93,25 @@ export default function LoginPage() {
                     Forgot password?
                   </Link>
                 </div>
-                {/*  Updated input to respect dark mode */}
                 <Input
                   id="password"
                   type="password"
-                  name="password"
-                  required
+                  {...register("password")}
                   className="bg-background"
                 />
+                {errors.password && (
+                  <p className="text-sm text-red-500">
+                    {errors.password.message}
+                  </p>
+                )}
               </div>
+
               <Button
                 className="w-full bg-green-500 hover:bg-green-600"
-                formAction={login}
+                type="submit"
+                disabled={isSubmitting}
               >
-                Login
+                {isSubmitting ? "Logging in..." : "Login"}
               </Button>
 
               <div className="relative my-4">
@@ -91,6 +125,7 @@ export default function LoginPage() {
                 </div>
               </div>
             </form>
+
             <div className="grid grid-cols-3 gap-3">
               <Button variant="outline" className="w-full">
                 <FcGoogle className="mr-2 h-4 w-4" />

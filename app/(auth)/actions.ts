@@ -38,11 +38,17 @@ export async function signup(formData: FormData) {
   const { error } = await supabase.auth.signUp(data)
 
   if (error) {
-    redirect('/error')
+    return { success: false, error: error.message };
   }
 
-  revalidatePath('/', 'layout')
-  redirect('/')
+ 
+  revalidatePath('/', 'layout');
+
+  
+  return {
+    success: true,
+    message: "Signup successful! Please check your email to confirm your account.",
+  };
 }
 
 

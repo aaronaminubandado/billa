@@ -28,6 +28,8 @@ import { Badge } from "@/components/ui/badge";
 import { useTheme } from "next-themes";
 import { NotificationsPopover } from "@/components/notifications/notifications-popover";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
 
 // Sample user data
 const user = {
@@ -46,16 +48,27 @@ export function TopBar({ toggleSidebar }: TopBarProps) {
   const router = useRouter();
   const [unreadCount, setUnreadCount] = useState(3);
   const [mounted, setMounted] = useState(false);
+  const supabase = createClient();
 
   // Ensure theme component is only rendered after mounting to prevent hydration mismatch
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  async function signOut() {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      toast.error("Logout failed, try again later");
+      return;
+    }
+
+    toast.success("Logout successful");
+  }
+
   // Handle logout
   const handleLogout = () => {
-    // TODO: Implement actual logout with Supabase
-    console.log("Logging out...");
+    signOut();
     router.push("/login");
   };
 

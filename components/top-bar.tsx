@@ -129,7 +129,7 @@ export function TopBar({ toggleSidebar }: TopBarProps) {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/profile" className="cursor-pointer w-full">
+                <Link href="/settings" className="cursor-pointer w-full">
                   <UserIcon className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </Link>

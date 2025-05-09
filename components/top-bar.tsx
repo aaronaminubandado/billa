@@ -81,7 +81,7 @@ export function TopBar({ toggleSidebar }: TopBarProps) {
   };
 
   return (
-    <div className="border-b bg-card h-16 px-4 flex items-center justify-between">
+    <div className="fixed top-0 w-full z-50 border-b bg-card h-16 px-4 flex items-center justify-between">
       <div className="flex items-center">
         <Link href="/dashboard" className="flex items-center">
           {/* <img src="/Billa.png" alt="Billa Logo" className="h-8 w-auto mr-2" /> */}

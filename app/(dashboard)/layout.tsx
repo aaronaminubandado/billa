@@ -19,7 +19,7 @@ export default function DashboardLayout({
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <div className="flex min-h-screen flex-col">
         <TopBar toggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        <div className="flex flex-1">
+        <div className="flex flex-1 pt-16">
           <Sidebar
             collapsed={sidebarCollapsed}
             setCollapsed={setSidebarCollapsed}

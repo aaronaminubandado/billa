@@ -3,11 +3,10 @@
 import React, { useEffect } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signup } from "../actions";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner"; // Optional toast feedback
+import { toast } from "sonner";
 
 import {
   Card,
@@ -56,24 +55,24 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
+        <div className="mb-6 text-center">
           <h1 className="text-3xl font-bold text-green-500">Billa</h1>
           <p className="text-muted-foreground">Personal Expense Tracker</p>
         </div>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="pt-4">
             <CardTitle className="text-2xl text-center">
               Create an account
             </CardTitle>
-            <CardDescription className="text-center">
+            <CardDescription className="px-1 text-center">
               Enter your details to create your Billa account
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-2">
             {/* Attach handleSubmit from react-hook-form */}
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
               {/* Username Field */}
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>

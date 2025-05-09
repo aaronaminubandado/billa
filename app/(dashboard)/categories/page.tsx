@@ -1,4 +1,4 @@
-// NEW: Categories management page
+// Categories management page
 "use client";
 
 import React, { useState } from "react";
@@ -42,7 +42,7 @@ import { AddCategoryModal } from "@/components/categories/add-category-modal";
 import { EditCategoryModal } from "@/components/categories/edit-category-modal";
 import { cn } from "@/lib/utils";
 
-// NEW: Sample category data
+// Sample category data
 const sampleCategories = [
   {
     id: 1,
@@ -125,24 +125,24 @@ export default function CategoriesPage() {
   const [currentCategory, setCurrentCategory] = useState<any>(null);
   const [typeFilter, setTypeFilter] = useState("all");
 
-  // NEW: Filter categories based on type
+  // Filter categories based on type
   const filteredCategories = categories.filter((category) => {
     return typeFilter === "all" || category.type === typeFilter;
   });
 
-  // NEW: Handle category deletion
+  // Handle category deletion
   const handleDeleteCategory = (id: number) => {
     // TODO: Implement actual deletion with Supabase
     setCategories(categories.filter((category) => category.id !== id));
   };
 
-  // NEW: Handle edit button click
+  // Handle edit button click
   const handleEditClick = (category: any) => {
     setCurrentCategory(category);
     setIsEditModalOpen(true);
   };
 
-  // NEW: Handle category update
+  // Handle category update
   const handleUpdateCategory = (updatedCategory: any) => {
     // TODO: Implement actual update with Supabase
     setCategories(
@@ -153,7 +153,7 @@ export default function CategoriesPage() {
     setIsEditModalOpen(false);
   };
 
-  // NEW: Handle adding a new category
+  // Handle adding a new category
   const handleAddCategory = (newCategory: any) => {
     // TODO: Implement actual creation with Supabase
     const id = Math.max(...categories.map((c) => c.id)) + 1;
@@ -170,7 +170,7 @@ export default function CategoriesPage() {
         </p>
       </div>
 
-      {/* NEW: Filter and action controls */}
+      {/* Filter and action controls */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6 items-start sm:items-center justify-between">
         <Select value={typeFilter} onValueChange={setTypeFilter}>
           <SelectTrigger className="w-[180px]">
@@ -189,7 +189,7 @@ export default function CategoriesPage() {
         </Button>
       </div>
 
-      {/* NEW: Categories table */}
+      {/* Categories table */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle>Your Categories</CardTitle>
@@ -278,14 +278,14 @@ export default function CategoriesPage() {
         </CardContent>
       </Card>
 
-      {/* NEW: Add Category Modal */}
+      {/* Add Category Modal */}
       <AddCategoryModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAdd={handleAddCategory}
       />
 
-      {/* NEW: Edit Category Modal */}
+      {/* Edit Category Modal */}
       {currentCategory && (
         <EditCategoryModal
           isOpen={isEditModalOpen}

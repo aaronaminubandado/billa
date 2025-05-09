@@ -1,8 +1,20 @@
-"use client"
+"use client";
 
-import React from 'react'
-import { PieChart, Pie, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { cn } from "@/lib/utils"
+import React from "react";
+import {
+  PieChart,
+  Pie,
+  BarChart,
+  Bar,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import { cn } from "@/lib/utils";
 
 // Sample categories with colors
 const categories = [
@@ -13,61 +25,69 @@ const categories = [
   { id: 5, name: "Shopping", color: "#ec4899", icon: "🛒" },
   { id: 6, name: "Utilities", color: "#64748b", icon: "💡" },
   { id: 7, name: "Healthcare", color: "#ef4444", icon: "🏥" },
-  { id: 8, name: "Education", color: "#eab308", icon: "🎓" }
-]
+  { id: 8, name: "Education", color: "#eab308", icon: "🎓" },
+];
 
 // Generate sample spending data
 const generateSpendingData = (timePeriod: string) => {
   // In a real app, this would fetch data based on the time period
-  const multiplier = timePeriod === 'week' ? 0.25 : 
-                    timePeriod === 'month' ? 1 : 
-                    timePeriod === 'quarter' ? 3 : 
-                    timePeriod === 'year' ? 12 : 1
-  
-  return categories.map(category => {
-    // Generate a somewhat realistic amount based on category
-    let baseAmount = 0
-    switch (category.name) {
-      case "Housing":
-        baseAmount = 1200
-        break
-      case "Food":
-        baseAmount = 500
-        break
-      case "Transportation":
-        baseAmount = 300
-        break
-      case "Entertainment":
-        baseAmount = 200
-        break
-      case "Shopping":
-        baseAmount = 250
-        break
-      case "Utilities":
-        baseAmount = 150
-        break
-      case "Healthcare":
-        baseAmount = 100
-        break
-      case "Education":
-        baseAmount = 80
-        break
-      default:
-        baseAmount = 100
-    }
-    
-    // Add some randomness
-    const randomFactor = 0.8 + Math.random() * 0.4 // Between 0.8 and 1.2
-    const amount = Math.round(baseAmount * multiplier * randomFactor)
-    
-    return {
-      name: category.name,
-      value: amount,
-      color: category.color,
-      icon: category.icon
-    }
-  }).sort((a, b) => b.value - a.value) // Sort by value descending
-}
+  const multiplier =
+    timePeriod === "week"
+      ? 0.25
+      : timePeriod === "month"
+      ? 1
+      : timePeriod === "quarter"
+      ? 3
+      : timePeriod === "year"
+      ? 12
+      : 1;
+
+  return categories
+    .map((category) => {
+      // Generate a somewhat realistic amount based on category
+      let baseAmount = 0;
+      switch (category.name) {
+        case "Housing":
+          baseAmount = 1200;
+          break;
+        case "Food":
+          baseAmount = 500;
+          break;
+        case "Transportation":
+          baseAmount = 300;
+          break;
+        case "Entertainment":
+          baseAmount = 200;
+          break;
+        case "Shopping":
+          baseAmount = 250;
+          break;
+        case "Utilities":
+          baseAmount = 150;
+          break;
+        case "Healthcare":
+          baseAmount = 100;
+          break;
+        case "Education":
+          baseAmount = 80;
+          break;
+        default:
+          baseAmount = 100;
+      }
+
+      // Add some randomness
+      const randomFactor = 0.8 + Math.random() * 0.4; // Between 0.8 and 1.2
+      const amount = Math.round(baseAmount * multiplier * randomFactor);
+
+      return {
+        name: category.name,
+        value: amount,
+        color: category.color,
+        icon: category.icon,
+      };
+    })
+    .sort((a, b) => b.value - a.value); // Sort by value descending
+};
 
 // Custom tooltip for charts
 const CustomTooltip = ({ active, payload }: any) => {
@@ -77,20 +97,23 @@ const CustomTooltip = ({ active, payload }: any) => {
         <p className="font-medium">{`${payload[0].name} ${payload[0].payload.icon}`}</p>
         <p className="text-muted-foreground">{`Amount: $${payload[0].value.toLocaleString()}`}</p>
       </div>
-    )
+    );
   }
-  return null
-}
+  return null;
+};
 
 interface CategorySpendingChartProps {
-  type: 'pie' | 'bar'
-  timePeriod: string
+  type: "pie" | "bar";
+  timePeriod: string;
 }
 
-export function CategorySpendingChart({ type, timePeriod }: CategorySpendingChartProps) {
-  const data = generateSpendingData(timePeriod)
-  
-  if (type === 'pie') {
+export function CategorySpendingChart({
+  type,
+  timePeriod,
+}: CategorySpendingChartProps) {
+  const data = generateSpendingData(timePeriod);
+
+  if (type === "pie") {
     return (
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
@@ -103,7 +126,9 @@ export function CategorySpendingChart({ type, timePeriod }: CategorySpendingChar
             fill="#8884d8"
             dataKey="value"
             nameKey="name"
-            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+            label={({ name, percent }) =>
+              `${name} ${(percent * 100).toFixed(0)}%`
+            }
           >
             {data.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.color} />
@@ -113,9 +138,9 @@ export function CategorySpendingChart({ type, timePeriod }: CategorySpendingChar
           <Legend />
         </PieChart>
       </ResponsiveContainer>
-    )
+    );
   }
-  
+
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
@@ -123,11 +148,15 @@ export function CategorySpendingChart({ type, timePeriod }: CategorySpendingChar
         layout="vertical"
         margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
       >
-        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+        <CartesianGrid
+          strokeDasharray="3 3"
+          horizontal={true}
+          vertical={false}
+        />
         <XAxis type="number" />
-        <YAxis 
-          type="category" 
-          dataKey="name" 
+        <YAxis
+          type="category"
+          dataKey="name"
           tick={{ fontSize: 12 }}
           width={80}
         />
@@ -139,5 +168,5 @@ export function CategorySpendingChart({ type, timePeriod }: CategorySpendingChar
         </Bar>
       </BarChart>
     </ResponsiveContainer>
-  )
+  );
 }

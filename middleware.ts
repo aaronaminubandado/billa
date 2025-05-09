@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
     }
 
     if (error) {
-      console.error("Supabase auth error:", error.message);
+    //   console.error("Supabase auth error:", error.message);
     }
   } catch (error) {
     console.error("Middleware error", error);

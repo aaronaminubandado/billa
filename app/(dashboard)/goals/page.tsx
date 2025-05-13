@@ -6,12 +6,11 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -29,7 +28,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AddGoalModal } from "@/components/goals/add-goal-modal";
 import { EditGoalModal } from "@/components/goals/edit-goal-modal";
-import { cn } from "@/lib/utils";
+
+//How to do this
+type BadgeVariant = 
+  | "default"
+  | "secondary"
+  | "outline"
+  | "destructive"
+  | "success"
+  | null
+  | undefined;
 
 // Sample goals data
 const sampleGoals = [
@@ -81,7 +89,7 @@ const sampleGoals = [
     id: 5,
     name: "Student Loan",
     targetAmount: 15000,
-    currentAmount: 4500,
+    currentAmount: 15000,
     dueDate: "2025-05-20",
     category: "Debt",
     type: "debt",
@@ -89,6 +97,18 @@ const sampleGoals = [
     color: "#a855f7",
   },
 ];
+
+interface Goal {
+    id: number;
+    name: string;
+    targetAmount: number;
+    currentAmount: number;
+    dueDate: string;
+    category: string;
+    type: string;
+    icon: string;
+    color: string;
+};
 
 // Helper function to format currency
 const formatCurrency = (amount: number) => {
@@ -150,7 +170,7 @@ export default function GoalsPage() {
   const [activeTab, setActiveTab] = useState("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [currentGoal, setCurrentGoal] = useState<any>(null);
+  const [currentGoal, setCurrentGoal] = useState<Goal | null>(null);
 
   // Filter goals based on active tab
   const filteredGoals = goals.filter((goal) => {
@@ -165,13 +185,13 @@ export default function GoalsPage() {
   };
 
   // Handle edit button click
-  const handleEditClick = (goal: any) => {
+  const handleEditClick = (goal: Goal) => {
     setCurrentGoal(goal);
     setIsEditModalOpen(true);
   };
 
   // Handle goal update
-  const handleUpdateGoal = (updatedGoal: any) => {
+  const handleUpdateGoal = (updatedGoal: Goal) => {
     // TODO: Implement actual update with Supabase
     setGoals(
       goals.map((goal) => (goal.id === updatedGoal.id ? updatedGoal : goal))
@@ -180,7 +200,7 @@ export default function GoalsPage() {
   };
 
   // Handle adding a new goal
-  const handleAddGoal = (newGoal: any) => {
+  const handleAddGoal = (newGoal: Goal) => {
     // TODO: Implement actual creation with Supabase
     const id = Math.max(...goals.map((g) => g.id)) + 1;
     setGoals([...goals, { ...newGoal, id }]);
@@ -328,7 +348,7 @@ export default function GoalsPage() {
                       ? `${daysRemaining} days left`
                       : "Due date passed"}
                   </div>
-                  <Badge variant={status.color as any}>{status.label}</Badge>
+                  <Badge variant={status.color as BadgeVariant}>{status.label}</Badge>
                 </CardFooter>
               </Card>
             );

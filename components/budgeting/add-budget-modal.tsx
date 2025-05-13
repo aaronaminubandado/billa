@@ -19,11 +19,27 @@ import {
 } from "@/components/ui/select";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 
+
+interface NewBudgetInput {
+  categoryId: number;
+  name: string;
+  amount: number;
+  period: string;
+}
+
+interface BudgetCategory {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+}
+
+
 interface AddBudgetModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (budget: any) => void;
-  categories: any[];
+  onAdd: (budget: NewBudgetInput) => void;
+  categories: BudgetCategory[];
 }
 
 export function AddBudgetModal({

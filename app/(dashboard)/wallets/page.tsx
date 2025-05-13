@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -133,6 +131,23 @@ const sampleWallets = [
   },
 ];
 
+interface WalletActivity {
+  id: number;
+  description: string;
+  amount: number;
+  date: string;
+}
+
+interface Wallet {
+  id: number;
+  name: string;
+  balance: number;
+  currency: string;
+  type: string;
+  icon: string;
+  recentActivity: WalletActivity[];
+}
+
 //  Helper function to format currency
 const formatCurrency = (amount: number, currency: string) => {
   return new Intl.NumberFormat("en-US", {
@@ -145,7 +160,7 @@ export default function WalletsPage() {
   const [wallets, setWallets] = useState(sampleWallets);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [currentWallet, setCurrentWallet] = useState<any>(null);
+  const [currentWallet, setCurrentWallet] = useState<Wallet | null>(null);
 
   //  Calculate total balance across all wallets
   const totalBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0);
@@ -157,13 +172,13 @@ export default function WalletsPage() {
   };
 
   //  Handle edit button click
-  const handleEditClick = (wallet: any) => {
+  const handleEditClick = (wallet: Wallet) => {
     setCurrentWallet(wallet);
     setIsEditModalOpen(true);
   };
 
   //  Handle wallet update
-  const handleUpdateWallet = (updatedWallet: any) => {
+  const handleUpdateWallet = (updatedWallet: Wallet) => {
     // TODO: Implement actual update with Supabase
     setWallets(
       wallets.map((wallet) =>
@@ -174,7 +189,7 @@ export default function WalletsPage() {
   };
 
   //  Handle adding a new wallet
-  const handleAddWallet = (newWallet: any) => {
+  const handleAddWallet = (newWallet: Wallet) => {
     // TODO: Implement actual creation with Supabase
     const id = Math.max(...wallets.map((w) => w.id)) + 1;
     setWallets([

@@ -40,7 +40,6 @@ import {
 } from "lucide-react";
 import { AddCategoryModal } from "@/components/categories/add-category-modal";
 import { EditCategoryModal } from "@/components/categories/edit-category-modal";
-import { cn } from "@/lib/utils";
 
 // Sample category data
 const sampleCategories = [
@@ -118,12 +117,21 @@ const sampleCategories = [
   },
 ];
 
+interface Category {
+    id: number;
+    name: string;
+    type: string;
+    color: string;
+    icon: string;
+    transactionCount: number;
+}
+
 export default function CategoriesPage() {
   const [categories, setCategories] = useState(sampleCategories);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [currentCategory, setCurrentCategory] = useState<any>(null);
-  const [typeFilter, setTypeFilter] = useState("all");
+  const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string>("all");
 
   // Filter categories based on type
   const filteredCategories = categories.filter((category) => {
@@ -137,13 +145,13 @@ export default function CategoriesPage() {
   };
 
   // Handle edit button click
-  const handleEditClick = (category: any) => {
+  const handleEditClick = (category: Category) => {
     setCurrentCategory(category);
     setIsEditModalOpen(true);
   };
 
   // Handle category update
-  const handleUpdateCategory = (updatedCategory: any) => {
+  const handleUpdateCategory = (updatedCategory: Category) => {
     // TODO: Implement actual update with Supabase
     setCategories(
       categories.map((category) =>
@@ -154,7 +162,7 @@ export default function CategoriesPage() {
   };
 
   // Handle adding a new category
-  const handleAddCategory = (newCategory: any) => {
+  const handleAddCategory = (newCategory: Category) => {
     // TODO: Implement actual creation with Supabase
     const id = Math.max(...categories.map((c) => c.id)) + 1;
     setCategories([...categories, { ...newCategory, id, transactionCount: 0 }]);

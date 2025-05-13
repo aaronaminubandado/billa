@@ -17,8 +17,48 @@ import { EditBudgetModal } from "@/components/budgeting/edit-budget-modal";
 import { BudgetCategoryGroup } from "@/components/budgeting/budget-category-group";
 import { BudgetSummaryChart } from "@/components/budgeting/budget-summary-chart";
 
+// Interfaces 
+interface Budget {
+  id: number;
+  name: string;
+  amount: number;
+  used: number;
+  period: string;
+}
+
+interface BudgetCategory {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+}
+
+interface BudgetData {
+  category: BudgetCategory;
+  budgets: Budget[];
+}
+
+// New interfaces for input types
+interface NewBudgetInput {
+  categoryId: number;
+  name: string;
+  amount: number;
+  period: string;
+}
+
+interface EditBudgetInput {
+  id: number;
+  name: string;
+  amount: number;
+  period: string;
+}
+
+interface BudgetWithCategory extends Budget {
+  category: BudgetCategory;
+}
+
 // Sample budget data grouped by category
-const sampleBudgetData = [
+const sampleBudgetData: BudgetData[] = [
   {
     category: {
       id: 1,
@@ -111,12 +151,12 @@ export default function BudgetPage() {
   // State for modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [currentBudget, setCurrentBudget] = useState<any>(null);
+  const [currentBudget, setCurrentBudget] = useState<BudgetWithCategory | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [budgetData, setBudgetData] = useState(sampleBudgetData);
+  const [budgetData, setBudgetData] = useState<BudgetData[]>(sampleBudgetData);
 
   // Handle adding a new budget
-  const handleAddBudget = (newBudget: any) => {
+  const handleAddBudget = (newBudget: NewBudgetInput) => {
     // In a real app, this would make an API call
     console.log("Adding new budget:", newBudget);
 
@@ -131,7 +171,8 @@ export default function BudgetPage() {
       updatedData[categoryIndex].budgets.push({
         id:
           Math.max(
-            ...budgetData.flatMap((group) => group.budgets.map((b) => b.id))
+            ...budgetData.flatMap((group) => group.budgets.map((b) => b.id)),
+            0 // Fallback if no budgets exist
           ) + 1,
         name: newBudget.name,
         amount: newBudget.amount,
@@ -149,7 +190,7 @@ export default function BudgetPage() {
   };
 
   // Handle editing a budget
-  const handleEditBudget = (updatedBudget: any) => {
+  const handleEditBudget = (updatedBudget: EditBudgetInput) => {
     // In a real app, this would make an API call
     console.log("Updating budget:", updatedBudget);
 
@@ -187,7 +228,7 @@ export default function BudgetPage() {
   };
 
   // Open edit modal with selected budget
-  const openEditModal = (budget: any, category: any) => {
+  const openEditModal = (budget: Budget, category: BudgetCategory) => {
     setCurrentBudget({ ...budget, category });
     setIsEditModalOpen(true);
   };

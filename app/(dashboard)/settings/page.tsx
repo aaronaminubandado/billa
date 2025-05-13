@@ -278,7 +278,7 @@ export default function SettingsPage() {
                     <div className="space-y-0.5">
                       <Label htmlFor="budget-alerts">Budget Alerts</Label>
                       <p className="text-sm text-muted-foreground">
-                        Receive notifications when you're close to exceeding
+                        Receive notifications when {"you're"} close to exceeding
                         your budget
                       </p>
                     </div>

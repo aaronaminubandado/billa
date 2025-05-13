@@ -5,7 +5,6 @@ import React, { useState } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/top-bar";
 import { ThemeProvider } from "@/components/theme-provider";
-import { useMediaQuery } from "@/hooks/use-media-query";
 
 export default function DashboardLayout({
   children,
@@ -13,7 +12,6 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const isMobile = useMediaQuery("(max-width: 768px)");
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

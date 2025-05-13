@@ -34,15 +34,12 @@ import {
 } from "@/components/ui/select";
 import {
   PlusIcon,
-  FilterIcon,
   ArrowUpDownIcon,
   MoreHorizontalIcon,
 } from "lucide-react";
 import { AddTransactionModal } from "@/components/transactions/add-transaction-modal";
 import { MonthlyFlowChart } from "@/components/transactions/monthly-flow-chart";
 import { TopCategoriesChart } from "@/components/transactions/top-categories-chart";
-import { Badge } from "@/components/ui/badge";
-import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 
 // Sample transaction data
@@ -117,7 +114,6 @@ export default function TransactionsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  const isMobile = useMediaQuery("(max-width: 768px)");
 
   // Filter transactions based on search query and filters
   const filteredTransactions = transactions.filter((transaction) => {

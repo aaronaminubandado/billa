@@ -108,7 +108,7 @@ http://localhost:3000
 ## 🌐 Live Demo
 
 Try the deployed application at:
-https://billa.vercel.app
+https://billa-beige.vercel.app
 
 **Demo Credentials (optional)**:
 - Email: demo@billa.com

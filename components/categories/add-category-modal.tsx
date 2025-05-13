@@ -63,6 +63,7 @@ const colorOptions = [
 interface AddCategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onAdd: (category: any) => void;
 }
 

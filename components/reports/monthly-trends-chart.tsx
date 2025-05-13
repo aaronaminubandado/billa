@@ -53,11 +53,13 @@ const generateMonthlyData = (months: number) => {
 };
 
 // Custom tooltip
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-background border rounded-md shadow-md p-3 text-sm">
         <p className="font-medium mb-1">{label}</p>
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         {payload.map((entry: any, index: number) => (
           <p key={`item-${index}`} style={{ color: entry.color }}>
             {entry.name}: ${entry.value.toLocaleString()}
@@ -74,7 +76,9 @@ interface MonthlyTrendsChartProps {
 }
 
 export function MonthlyTrendsChart({ timeRange }: MonthlyTrendsChartProps) {
+     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [data, setData] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [chartType, setChartType] = useState<"line" | "area">("line");
 
   useEffect(() => {

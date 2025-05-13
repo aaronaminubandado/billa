@@ -16,18 +16,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  BellIcon,
   LogOutIcon,
   UserIcon,
   SettingsIcon,
   MoonIcon,
   SunIcon,
-  MenuIcon,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { useTheme } from "next-themes";
 import { NotificationsPopover } from "@/components/notifications/notifications-popover";
-import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 
@@ -39,11 +35,11 @@ const user = {
   initials: "JD",
 };
 
-interface TopBarProps {
-  toggleSidebar: () => void;
-}
+// interface TopBarProps {
+//   toggleSidebar: () => void;
+// }
 
-export function TopBar({ toggleSidebar }: TopBarProps) {
+export function TopBar() {
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const [unreadCount, setUnreadCount] = useState(3);

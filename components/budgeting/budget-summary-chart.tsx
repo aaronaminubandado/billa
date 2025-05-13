@@ -17,6 +17,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Custom tooltip for charts
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -34,19 +35,24 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 interface BudgetSummaryChartProps {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   budgetData: any[];
 }
 
 export function BudgetSummaryChart({ budgetData }: BudgetSummaryChartProps) {
-  const [chartType, setChartType] = useState<"pie" | "bar">("pie");
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [chartType, setChartType] = useState<"pie" | "bar">("pie");
 
   // Process data for charts
   const chartData = budgetData.map((group) => {
     const totalBudgeted = group.budgets.reduce(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (sum: number, budget: any) => sum + budget.amount,
       0
     );
     const totalUsed = group.budgets.reduce(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (sum: number, budget: any) => sum + budget.used,
       0
     );

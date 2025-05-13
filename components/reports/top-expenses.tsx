@@ -99,6 +99,7 @@ const sortedExpenses = [...topExpensesData].sort((a, b) => b.amount - a.amount);
 const top5Expenses = sortedExpenses.slice(0, 5);
 
 // Custom tooltip
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;

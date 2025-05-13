@@ -20,6 +20,7 @@ interface BudgetCategoryGroupProps {
     used: number;
     period: string;
   }>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onEditBudget: (budget: any) => void;
 }
 

@@ -33,9 +33,12 @@ import { TrashIcon } from "lucide-react";
 interface EditBudgetModalProps {
   isOpen: boolean;
   onClose: () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   budget: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdate: (budget: any) => void;
   onDelete: (id: number) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   categories: any[];
 }
 
@@ -217,7 +220,7 @@ export function EditBudgetModal({
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the budget "{budget?.name}". This
+              This will permanently delete the budget {"\""}{budget?.name} {"\""}. This
               action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

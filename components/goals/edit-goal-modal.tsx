@@ -70,7 +70,9 @@ const colorOptions = [
 interface EditGoalModalProps {
   isOpen: boolean;
   onClose: () => void;
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   goal: any;
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdate: (goal: any) => void;
 }
 
@@ -206,7 +208,7 @@ export function EditGoalModal({
                 placeholder="0.00"
               />
               <p className="text-xs text-muted-foreground">
-                How much you've already saved or paid off
+                How much {"you've"} already saved or paid off
               </p>
             </div>
 

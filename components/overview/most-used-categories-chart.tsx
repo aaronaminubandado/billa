@@ -126,7 +126,8 @@ const generateMostUsedCategoriesData = (timePeriod: string) => {
 };
 
 // Custom tooltip for the chart
-const CustomTooltip = ({ active, payload, label }: any) => {
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any
+const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-background border rounded-md shadow-md p-3 text-sm">

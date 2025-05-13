@@ -20,13 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  EyeIcon,
-  EyeOffIcon,
-  ArrowUpIcon,
-  ArrowDownIcon,
-  DollarSignIcon,
-  TrendingUpIcon,
-  TrendingDownIcon,
   SettingsIcon,
 } from "lucide-react";
 import { CategorySpendingChart } from "@/components/overview/category-spending-chart";
@@ -34,7 +27,6 @@ import { IncomeVsExpensesChart } from "@/components/overview/income-vs-expenses-
 import { SpendingTrendChart } from "@/components/overview/spending-trend-chart";
 import { MostUsedCategoriesChart } from "@/components/overview/most-used-categories-chart";
 import { DashboardMetrics } from "@/components/overview/dashboard-metrics";
-import { cn } from "@/lib/utils";
 
 export default function Overview() {
   // State for chart visibility toggles

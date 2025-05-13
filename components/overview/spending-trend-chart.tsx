@@ -66,6 +66,7 @@ const generateSpendingTrendData = (timePeriod: string) => {
 
   // Generate data points
   dataPoints = labels.map((label) => {
+     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const dataPoint: any = { name: label };
 
     // Add data for each category with some randomness
@@ -87,11 +88,13 @@ const generateSpendingTrendData = (timePeriod: string) => {
 };
 
 // Custom tooltip for the chart
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-background border rounded-md shadow-md p-3 text-sm">
         <p className="font-medium mb-1">{label}</p>
+        { /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/}
         {payload.map((entry: any, index: number) => (
           <p
             key={`item-${index}`}

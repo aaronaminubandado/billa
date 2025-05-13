@@ -92,6 +92,7 @@ const generateIncomeVsExpensesData = (timePeriod: string) => {
 };
 
 // Custom tooltip for the chart
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (

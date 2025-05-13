@@ -1,36 +1,153 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Billa – Personal Expense Tracker
 
-## Getting Started
+Billa is a modern web application for tracking personal finances, built with Next.js 14 and Supabase. It offers a clean, intuitive interface to manage income, expenses, budgets, and financial goals, making it an excellent tool for users and a showcase of full-stack development skills.
 
-First, run the development server:
+## 🚧 Development Status
+
+> **Note:** This project is currently in beta. Several features are under active development:
+>
+> - **Responsive Design**: Mobile and tablet layouts are in progress (currently optimized for desktop)
+> - **Reports**: Feature is partially implemented (export functionality coming soon)
+> - **Recurring Transactions**: Basic functionality implemented, advanced options in development
+> - **Insights**: Currently shows basic data, advanced analytics in progress
+
+## ✨ Features
+
+### Core Features (Completed)
+- **Authentication**
+  - Email/password login
+  - OAuth (Google, GitHub) via Supabase Auth
+- **Dashboard**
+  - Visual overview with charts
+  - Key financial metrics
+- **Transactions**
+  - Unified view for income and expenses
+  - Custom categorization
+- **Categories**
+  - Customizable with colors and icons
+- **Wallets/Accounts**
+  - Support for multiple accounts
+- **Themes**
+  - Dark/light mode toggle
+- **Notifications**
+  - Toast and system alerts
+
+### In Progress/Planned Features
+- **Budgets**
+  - Plan and visualize spending limits
+- **Goals**
+  - Track savings and debt repayment
+- **Filtering**
+  - Advanced time-based views (daily, monthly, yearly)
+- **Full Responsive Design**
+  - Complete mobile and tablet optimization
+- **Reports**
+  - Export-ready financial summaries
+
+<!-- ## 📸 Screenshots
+
+*Add screenshots here to showcase the dashboard, transaction forms, mobile layout, etc.*
+
+<div align="center">
+  <em>Coming soon</em>
+</div> -->
+
+## 🔧 Tech Stack
+
+- **Framework**: Next.js 14 (App Router, Server Actions, Middleware)
+- **Database & Auth**: Supabase (PostgreSQL, Auth, Edge Functions)
+- **Styling**: TailwindCSS, Shadcn/UI
+- **Charts**: Chart.js
+- **Notifications**: Radix UI, Custom Toast
+- **Icons**: Lucide
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js (v18 or later)
+- Supabase account for API keys
+
+### Installation
+
+#### 1. Clone the Repository
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/aaronaminubandado/billa
+cd billa
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+#### 2. Install Dependencies
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm install
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+#### 3. Configure Environment Variables
 
-## Learn More
+Create a `.env.local` file in the project root and add:
 
-To learn more about Next.js, take a look at the following resources:
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Find these values in your Supabase project under Project Settings → API.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+#### 4. Running the Application
 
-## Deploy on Vercel
+Start the development server:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+pnpm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open your browser and navigate to:
+http://localhost:3000
+
+## 🌐 Live Demo
+
+Try the deployed application at:
+https://billa.vercel.app
+
+**Demo Credentials (optional)**:
+- Email: demo@billa.com
+- Password: test1234
+
+## 📦 Deployment (Vercel)
+
+1. Push the code to a GitHub repository.
+2. Visit Vercel and import your repository.
+3. Configure environment variables in the Vercel dashboard.
+4. Click Deploy.
+
+## 📁 Project Structure
+
+```
+├── /app            # Next.js App Router structure
+├── /components     # UI and form components
+├── /lib            # Supabase client and utilities
+├── /hooks          # Custom React hooks
+└── /types          # TypeScript definitions
+```
+
+## 🔮 Future Improvements
+
+- Export reports as CSV or PDF
+- Add PWA support for offline access
+- Implement AI-driven spending insights
+- Integrate with banks (e.g., Plaid)
+- Complete responsive design for all device sizes
+- Implement comprehensive filtering system
+
+<!-- ## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. -->
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 📬 Contact
+www.linkedin.com/in/aaron-bandado-13749a202
+aaron.aminu1@gmail.com

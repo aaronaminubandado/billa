@@ -63,7 +63,7 @@ const colorOptions = [
 interface AddCategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
-   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onAdd: (category: any) => void;
 }
 
@@ -114,7 +114,7 @@ export function AddCategoryModal({
       </DialogHeader>
 
       <form onSubmit={handleSubmit}>
-        <div className="space-y-4 py-4">
+        <div className="space-y-2 py-2">
           <div className="space-y-2">
             <Label htmlFor="name">Category Name</Label>
             <Input
@@ -125,7 +125,6 @@ export function AddCategoryModal({
               required
             />
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="type">Type</Label>
             <Select value={type} onValueChange={setType}>
@@ -138,7 +137,6 @@ export function AddCategoryModal({
               </SelectContent>
             </Select>
           </div>
-
           <div className="space-y-2">
             <Label>Icon</Label>
             <ScrollArea className="h-[180px] rounded-md border p-2">
@@ -157,7 +155,6 @@ export function AddCategoryModal({
               </div>
             </ScrollArea>
           </div>
-
           <div className="space-y-2">
             <Label>Color</Label>
             <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">

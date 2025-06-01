@@ -119,7 +119,7 @@ export function EditCategoryModal({
       </DialogHeader>
 
       <form onSubmit={handleSubmit}>
-        <div className="space-y-4 py-4">
+        <div className="space-y-2 py-2">
           <div className="space-y-2">
             <Label htmlFor="name">Category Name</Label>
             <Input

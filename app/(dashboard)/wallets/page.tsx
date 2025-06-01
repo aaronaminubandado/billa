@@ -1,14 +1,9 @@
 //  Wallets/Accounts management page
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   PlusIcon,
@@ -27,109 +22,8 @@ import {
 import { AddWalletModal } from "@/components/wallets/add-wallet-modal";
 import { EditWalletModal } from "@/components/wallets/edit-wallet-modal";
 import { cn } from "@/lib/utils";
-
-//  Sample wallet data
-const sampleWallets = [
-  {
-    id: 1,
-    name: "Cash Wallet",
-    balance: 1250.75,
-    currency: "USD",
-    type: "cash",
-    icon: "💵",
-    recentActivity: [
-      {
-        id: 1,
-        description: "Grocery Shopping",
-        amount: -45.5,
-        date: "2023-06-15",
-      },
-      {
-        id: 2,
-        description: "ATM Withdrawal",
-        amount: -200,
-        date: "2023-06-10",
-      },
-      {
-        id: 3,
-        description: "Freelance Payment",
-        amount: 500,
-        date: "2023-06-05",
-      },
-    ],
-  },
-  {
-    id: 2,
-    name: "Main Bank Account",
-    balance: 4320.18,
-    currency: "USD",
-    type: "bank",
-    icon: "🏦",
-    recentActivity: [
-      { id: 1, description: "Salary", amount: 3000, date: "2023-06-01" },
-      { id: 2, description: "Rent Payment", amount: -1200, date: "2023-06-02" },
-      {
-        id: 3,
-        description: "Utility Bills",
-        amount: -150.25,
-        date: "2023-06-05",
-      },
-    ],
-  },
-  {
-    id: 3,
-    name: "Credit Card",
-    balance: -750.5,
-    currency: "USD",
-    type: "card",
-    icon: "💳",
-    recentActivity: [
-      { id: 1, description: "Restaurant", amount: -85.75, date: "2023-06-12" },
-      {
-        id: 2,
-        description: "Online Shopping",
-        amount: -120.5,
-        date: "2023-06-08",
-      },
-      {
-        id: 3,
-        description: "Subscription",
-        amount: -15.99,
-        date: "2023-06-01",
-      },
-    ],
-  },
-  {
-    id: 4,
-    name: "Savings Account",
-    balance: 10500,
-    currency: "USD",
-    type: "savings",
-    icon: "🏆",
-    recentActivity: [
-      {
-        id: 1,
-        description: "Transfer from Main Account",
-        amount: 500,
-        date: "2023-06-15",
-      },
-      { id: 2, description: "Interest", amount: 25.75, date: "2023-06-01" },
-    ],
-  },
-  {
-    id: 5,
-    name: "Mobile Wallet",
-    balance: 175.25,
-    currency: "USD",
-    type: "mobile",
-    icon: "📱",
-    recentActivity: [
-      { id: 1, description: "Coffee Shop", amount: -4.5, date: "2023-06-15" },
-      { id: 2, description: "Transport", amount: -2.75, date: "2023-06-14" },
-      { id: 3, description: "Top-up", amount: 50, date: "2023-06-10" },
-    ],
-  },
-];
+import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
 
 interface WalletActivity {
   id: number;
@@ -157,18 +51,26 @@ const formatCurrency = (amount: number, currency: string) => {
 };
 
 export default function WalletsPage() {
-  const [wallets, setWallets] = useState(sampleWallets);
+  const [wallets, setWallets] = useState<Wallet[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [currentWallet, setCurrentWallet] = useState<Wallet | null>(null);
+  const [currentWallet, setCurrentWallet] = useState<Wallet>();
+  const supabase = createClient();
 
-  //  Calculate total balance across all wallets
   const totalBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0);
 
   //  Handle wallet deletion
-  const handleDeleteWallet = (id: number) => {
-    // TODO: Implement actual deletion with Supabase
-    setWallets(wallets.filter((wallet) => wallet.id !== id));
+  const handleDeleteWallet = async (id: number) => {
+    const { error } = await supabase.from("wallets").delete().eq("id", id);
+
+    if (error) {
+      //console.error("Delete wallet failed: ", error);
+      toast.error("An error occured. Try again later");
+    } else {
+      toast.success("Wallet deleted successfully!");
+    }
+
+    await fetchWallets();
   };
 
   //  Handle edit button click
@@ -177,32 +79,159 @@ export default function WalletsPage() {
     setIsEditModalOpen(true);
   };
 
-  //  Handle wallet update
-  const handleUpdateWallet = (updatedWallet: Wallet) => {
-    // TODO: Implement actual update with Supabase
-    setWallets(
-      wallets.map((wallet) =>
-        wallet.id === updatedWallet.id ? updatedWallet : wallet
-      )
-    );
-    setIsEditModalOpen(false);
+  // Extract the fetch logic into a reusable function
+  const fetchWallets = async () => {
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        console.error("Error fetching user:", userError?.message);
+        return false; // Return false to indicate failure
+      }
+
+      const { data, error } = await supabase
+        .from("wallets")
+        .select("*")
+        .eq("user_id", user.id);
+
+      if (error) {
+        // console.error("Error fetching wallets:", error.message);
+        toast.error(`Failed to load wallets`);
+        return false;
+      }
+
+      const formattedWallets: Wallet[] = data.map((wallet) => ({
+        ...wallet,
+        recentActivity: [], // TODO: Set up recent activity after adding transactions table
+      }));
+
+      setWallets(formattedWallets);
+      return true; // Return true to indicate success
+    } catch (error) {
+      //console.error("Unexpected error fetching wallets:", error);
+      toast.error("An unexpected error occurred while loading wallets.");
+      return false;
+    }
   };
 
-  //  Handle adding a new wallet
-  const handleAddWallet = (newWallet: Wallet) => {
-    // TODO: Implement actual creation with Supabase
-    const id = Math.max(...wallets.map((w) => w.id)) + 1;
-    setWallets([
-      ...wallets,
-      {
+  // Updated handleUpdateWallet with database refresh
+  const handleUpdateWallet = async (updatedWallet: Wallet) => {
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        console.error("Failed to get user:", userError?.message);
+        toast.error("Authentication error. Please try logging in again.");
+        return;
+      }
+
+      const { id, recentActivity, ...rest } = updatedWallet;
+      const walletData = {
+        ...rest,
+        user_id: user.id,
+        currency: updatedWallet.currency,
+        type: updatedWallet.type,
+      };
+
+      const { data, error } = await supabase
+        .from("wallets")
+        .update(walletData)
+        .eq("id", id)
+        .eq("user_id", user.id)
+        .select();
+
+      console.log("Error:", error?.message);
+      if (error) {
+        // console.error("Error updating wallet:", error.message);
+        toast.error(`Failed to update wallet: ${error.message}`);
+        return;
+      }
+
+      // Close modal first for better UX
+      setIsEditModalOpen(false);
+
+      // Refresh from database
+      const refreshSuccess = await fetchWallets();
+
+      if (refreshSuccess) {
+        toast.success("Wallet updated successfully!");
+      } else {
+        toast.error(
+          "Wallet updated, but failed to refresh the list. Please reload the page."
+        );
+      }
+    } catch (error) {
+      //console.error("Unexpected error updating wallet:", error);
+      toast.error("An unexpected error occurred while updating the wallet.");
+    }
+  };
+
+  // Updated handleAddWallet with database refresh
+  const handleAddWallet = async (newWallet: Wallet) => {
+    try {
+      // Get the currently authenticated user
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        //console.error("Failed to get user:", userError?.message);
+        toast.error("Authentication error. Please try logging in again.");
+        return;
+      }
+
+      const walletToInsert = {
         ...newWallet,
-        id,
-        recentActivity: [],
-      },
-    ]);
-    setIsAddModalOpen(false);
+        user_id: user.id, // Attach the current user's ID
+      };
+
+      const { data, error } = await supabase
+        .from("wallets")
+        .insert([walletToInsert])
+        .select();
+
+      if (error) {
+        //console.error("Error inserting wallet:", error.message);
+        toast.error(`Failed to add wallet: ${error.message}`);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        //console.error("No wallet was inserted");
+        toast.error("Failed to add wallet: Insert operation failed");
+        return;
+      }
+
+      // Close modal first
+      setIsAddModalOpen(false);
+
+      // Refresh from database
+      const refreshSuccess = await fetchWallets();
+
+      if (refreshSuccess) {
+        toast.success("Wallet added successfully!");
+      } else {
+        toast.error(
+          "Wallet added, but failed to refresh the list. Please reload the page."
+        );
+      }
+    } catch (error) {
+      //console.error("Unexpected error adding wallet:", error);
+      toast.error("An unexpected error occurred while adding the wallet.");
+    }
   };
 
+  // Update your useEffect to use the extracted function
+  useEffect(() => {
+    fetchWallets();
+  }, []);
   return (
     <div>
       <div className="mb-8">
@@ -246,8 +275,10 @@ export default function WalletsPage() {
                   <div>
                     <CardTitle>{wallet.name}</CardTitle>
                     <Badge variant="outline" className="mt-1">
-                      {wallet.type.charAt(0).toUpperCase() +
-                        wallet.type.slice(1)}
+                      {wallet.type
+                        ? wallet.type.charAt(0).toUpperCase() +
+                          wallet.type.slice(1)
+                        : "Unknown"}
                     </Badge>
                   </div>
                 </div>

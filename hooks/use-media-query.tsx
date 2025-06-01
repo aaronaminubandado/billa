@@ -1,29 +1,28 @@
 // Added custom hook for responsive design
 "use client";
 
+
 import { useState, useEffect } from "react";
 
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false);
+  const [matches, setMatches] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia(query).matches : false
+  );
 
   useEffect(() => {
     const media = window.matchMedia(query);
 
-    // Update the state initially
-    setMatches(media.matches);
-
-    // Define callback for media query changes
-    const listener = (event: MediaQueryListEvent) => {
+    const handleChange = (event: MediaQueryListEvent) => {
       setMatches(event.matches);
     };
 
-    // Add the callback as a listener
-    media.addEventListener("change", listener);
+    // Set initial match only if it differs from current state
+    if (matches !== media.matches) {
+      setMatches(media.matches);
+    }
 
-    // Remove the listener when the hook is unmounted
-    return () => {
-      media.removeEventListener("change", listener);
-    };
+    media.addEventListener("change", handleChange);
+    return () => media.removeEventListener("change", handleChange);
   }, [query]);
 
   return matches;

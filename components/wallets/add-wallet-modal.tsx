@@ -33,7 +33,7 @@ const walletTypes = [
   { value: "investment", label: "Investment", icon: "📈" },
 ];
 
-// NEW: Currency options
+// Currency options
 const currencies = [
   { value: "USD", label: "US Dollar ($)" },
   { value: "EUR", label: "Euro (€)" },
@@ -62,25 +62,32 @@ export function AddWalletModal({
   const [currency, setCurrency] = useState("USD");
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // NEW: Get icon for selected wallet type
+  // Get icon for selected wallet type
   const getIconForType = (type: string) => {
     return walletTypes.find((t) => t.value === type)?.icon || "💰";
+  };
+
+  // FIXED: Proper handler for dialog open/close state
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      onClose();
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // NEW: Validate form
+    // Validate form
     if (!name.trim()) {
       // TODO: Add proper form validation and error messages
       alert("Please enter a wallet name");
       return;
     }
 
-    // NEW: Create new wallet object
+    // Create new wallet object
     const newWallet = {
       name,
-      balance: parseFloat(balance) || 0,
+      balance: Number.parseFloat(balance) || 0,
       type,
       currency,
       icon: getIconForType(type),
@@ -93,10 +100,23 @@ export function AddWalletModal({
     setBalance("");
     setType("bank");
     setCurrency("USD");
+
+    // Close modal
+    onClose();
   };
 
+  // FIXED: Reset form when modal closes
+  React.useEffect(() => {
+    if (!isOpen) {
+      setName("");
+      setBalance("");
+      setType("bank");
+      setCurrency("USD");
+    }
+  }, [isOpen]);
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent
         className={cn(
           "sm:max-w-[500px]",
@@ -130,11 +150,11 @@ export function AddWalletModal({
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {walletTypes.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
+                  {walletTypes.map((walletType) => (
+                    <SelectItem key={walletType.value} value={walletType.value}>
                       <div className="flex items-center">
-                        <span className="mr-2">{type.icon}</span>
-                        <span>{type.label}</span>
+                        <span className="mr-2">{walletType.icon}</span>
+                        <span>{walletType.label}</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -149,9 +169,12 @@ export function AddWalletModal({
                   <SelectValue placeholder="Select currency" />
                 </SelectTrigger>
                 <SelectContent>
-                  {currencies.map((currency) => (
-                    <SelectItem key={currency.value} value={currency.value}>
-                      {currency.label}
+                  {currencies.map((currencyOption) => (
+                    <SelectItem
+                      key={currencyOption.value}
+                      value={currencyOption.value}
+                    >
+                      {currencyOption.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

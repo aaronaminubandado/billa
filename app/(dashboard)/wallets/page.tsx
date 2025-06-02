@@ -203,12 +203,6 @@ export default function WalletsPage() {
         return;
       }
 
-      if (!data || data.length === 0) {
-        //console.error("No wallet was inserted");
-        toast.error("Failed to add wallet: Insert operation failed");
-        return;
-      }
-
       // Close modal first
       setIsAddModalOpen(false);
 

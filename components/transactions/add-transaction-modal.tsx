@@ -1,17 +1,12 @@
-// New modal component for adding transactions
+// Add Transaction Modal
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -20,157 +15,339 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/utils/supabase/client";
 
 interface AddTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onAdd: (transaction: any) => void;
 }
 
 export function AddTransactionModal({
   isOpen,
   onClose,
+  onAdd,
 }: AddTransactionModalProps) {
-  const [transactionType, setTransactionType] = useState<"income" | "expense">(
-    "expense"
-  );
+  const [type, setType] = useState<"income" | "expense">("expense");
+  const [name, setName] = useState("");
+  const [amount, setAmount] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [walletId, setWalletId] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [recurring, setRecurring] = useState(false);
+  const [recurringFrequency, setRecurringFrequency] = useState("monthly");
+  const [notes, setNotes] = useState("");
+  const [wallets, setWallets] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const supabase = createClient();
+
   const isMobile = useMediaQuery("(max-width: 768px)");
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      onClose();
+    }
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        console.error("Error fetching user:", userError?.message);
+        return;
+      }
+
+      try {
+        // Fetch user wallets
+        const { data: walletData, error: walletError } = await supabase
+          .from("wallets")
+          .select("*")
+          .eq("user_id", user.id);
+
+        if (walletError) throw walletError;
+        setWallets(walletData || []);
+
+        // Fetch user categories
+        const { data: categoryData, error: categoryError } = await supabase
+          .from("categories")
+          .select("*")
+          .eq("user_id", user.id);
+
+        if (categoryError) throw categoryError;
+        setCategories(categoryData || []);
+      } catch (err: any) {
+        console.error("Error fetching data:", err.message);
+      }
+    };
+
+    if (isOpen) fetchData();
+  }, [isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
+
+    if (!name.trim() || !amount || !categoryId || !walletId) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    const newTransaction = {
+      type,
+      name,
+      amount: Number.parseFloat(amount),
+      category_id: categoryId,
+      wallet_id: walletId,
+      date,
+      recurring,
+      recurring_frequency: recurring ? recurringFrequency : null,
+      notes,
+    };
+
+    onAdd(newTransaction);
+
+    // Reset form
+    setType("expense");
+    setName("");
+    setAmount("");
+    setCategoryId("");
+    setWalletId("");
+    setDate(new Date().toISOString().split("T")[0]);
+    setRecurring(false);
+    setRecurringFrequency("monthly");
+    setNotes("");
+
     onClose();
   };
 
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setType("expense");
+      setName("");
+      setAmount("");
+      setCategoryId("");
+      setWalletId("");
+      setDate(new Date().toISOString().split("T")[0]);
+      setRecurring(false);
+      setRecurringFrequency("monthly");
+      setNotes("");
+    }
+  }, [isOpen]);
+
+  // Filter categories based on transaction type
+  const filteredCategories = categories.filter((category) => {
+    if (type === "income") {
+      return (
+        category.name.toLowerCase().includes("income") ||
+        category.name.toLowerCase().includes("savings")
+      );
+    }
+    return !["income", "savings"].includes(category.name.toLowerCase());
+  });
+
   return (
-    // Use Dialog for desktop and Drawer for mobile
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent
         className={cn(
-          "sm:max-w-[500px]",
-          // Make modal full-screen on mobile
-          isMobile ? "w-full h-[100dvh] rounded-none max-h-[100dvh]" : ""
+          // FIXED: Better responsive sizing
+          "max-w-md w-full mx-4", // Smaller max width, responsive margins
+          isMobile
+            ? "h-[90vh] max-h-[90vh] overflow-y-auto" // Mobile: 90% height with scroll
+            : "max-h-[85vh] overflow-y-auto" // Desktop: max 85% height with scroll
         )}
+        onInteractOutside={(e) => {
+          const target = e.target as Element;
+          if (target?.closest("[data-radix-select-content]")) {
+            e.preventDefault();
+          }
+        }}
       >
-        <DialogHeader>
+        <DialogHeader className="space-y-2">
           <DialogTitle>Add Transaction</DialogTitle>
           <DialogDescription>
-            Enter the details of your transaction below
+            Record a new income or expense transaction
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs
-          value={transactionType}
-          onValueChange={(value) =>
-            setTransactionType(value as "income" | "expense")
-          }
-          className="w-full"
-        >
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="expense">Expense</TabsTrigger>
-            <TabsTrigger value="income">Income</TabsTrigger>
-          </TabsList>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Transaction Type Toggle */}
+          <div className="flex space-x-2">
+            <Button
+              type="button"
+              variant={type === "expense" ? "default" : "outline"}
+              onClick={() => setType("expense")}
+              className="flex-1"
+              size="sm"
+            >
+              Expense
+            </Button>
+            <Button
+              type="button"
+              variant={type === "income" ? "default" : "outline"}
+              onClick={() => setType("income")}
+              className="flex-1"
+              size="sm"
+            >
+              Income
+            </Button>
+          </div>
 
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-4 py-2">
-              <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="amount">Amount</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    required
-                    className={cn(
-                      "text-right",
-                      transactionType === "income"
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-red-600 dark:text-red-400"
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Input
-                    id="description"
-                    placeholder="What was this for?"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Select>
-                    <SelectTrigger id="category">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {transactionType === "expense" ? (
-                        <>
-                          <SelectItem value="food">Food</SelectItem>
-                          <SelectItem value="transportation">
-                            Transportation
-                          </SelectItem>
-                          <SelectItem value="entertainment">
-                            Entertainment
-                          </SelectItem>
-                          <SelectItem value="housing">Housing</SelectItem>
-                          <SelectItem value="utilities">Utilities</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </>
-                      ) : (
-                        <>
-                          <SelectItem value="salary">Salary</SelectItem>
-                          <SelectItem value="freelance">Freelance</SelectItem>
-                          <SelectItem value="investments">
-                            Investments
-                          </SelectItem>
-                          <SelectItem value="gifts">Gifts</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="wallet">Wallet</Label>
-                  <Select>
-                    <SelectTrigger id="wallet">
-                      <SelectValue placeholder="Select wallet" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">Cash</SelectItem>
-                      <SelectItem value="bank">Bank Account</SelectItem>
-                      <SelectItem value="credit">Credit Card</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="date">Date</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    required
-                    defaultValue={new Date().toISOString().split("T")[0]}
-                  />
-                </div>
-              </div>
+          <div className="grid grid-cols-1 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Description</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., Grocery shopping, Salary"
+                required
+              />
             </div>
 
-            <DialogFooter className="mt-6">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit">Save Transaction</Button>
-            </DialogFooter>
-          </form>
-        </Tabs>
+            <div className="space-y-2">
+              <Label htmlFor="amount">Amount</Label>
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="category">Category</Label>
+              <Select
+                key={`category-${isOpen}-${type}`}
+                value={categoryId}
+                onValueChange={setCategoryId}
+              >
+                <SelectTrigger id="category">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent position="popper" sideOffset={4}>
+                  {filteredCategories.map((category) => (
+                    <SelectItem
+                      key={category.id}
+                      value={category.id.toString()}
+                    >
+                      <div className="flex items-center">
+                        <span className="mr-2">{category.icon}</span>
+                        <span>{category.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="wallet">Wallet</Label>
+              <Select
+                key={`wallet-${isOpen}`}
+                value={walletId}
+                onValueChange={setWalletId}
+              >
+                <SelectTrigger id="wallet">
+                  <SelectValue placeholder="Select wallet" />
+                </SelectTrigger>
+                <SelectContent position="popper" sideOffset={4}>
+                  {wallets.map((wallet) => (
+                    <SelectItem key={wallet.id} value={wallet.id.toString()}>
+                      <div className="flex items-center">
+                        <span className="mr-2">{wallet.icon}</span>
+                        <span>{wallet.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="date">Date</Label>
+              <Input
+                id="date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="flex items-center justify-between space-x-2">
+              <Label htmlFor="recurring" className="text-sm font-medium">
+                Recurring Transaction
+              </Label>
+              <Switch
+                id="recurring"
+                checked={recurring}
+                onCheckedChange={setRecurring}
+              />
+            </div>
+
+            {recurring && (
+              <div className="space-y-2">
+                <Label htmlFor="frequency">Frequency</Label>
+                <Select
+                  value={recurringFrequency}
+                  onValueChange={setRecurringFrequency}
+                >
+                  <SelectTrigger id="frequency">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent position="popper" sideOffset={4}>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Additional notes..."
+                rows={2}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button type="submit" className="w-full sm:w-auto">
+              Add Transaction
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

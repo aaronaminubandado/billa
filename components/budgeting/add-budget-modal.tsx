@@ -22,7 +22,7 @@ import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { toast } from "sonner";
 
 interface NewBudgetInput {
-	categoryId: number;
+	categoryId: string;
 	name: string;
 	amount: number;
 	period: string;
@@ -97,7 +97,7 @@ export function AddBudgetModal({
 		const newBudget = {
 			name,
 			amount: parseFloat(amount),
-			categoryId: parseInt(categoryId),
+			categoryId: categoryId,
 			period,
 		};
 

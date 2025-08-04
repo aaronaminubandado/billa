@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlusIcon, SearchIcon, FilterIcon } from "lucide-react";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from "@/components/ui/select";
 import { AddTransactionModal } from "@/components/transactions/add-transaction-modal";
 import { EditTransactionModal } from "@/components/transactions/edit-transaction-modal";
@@ -21,63 +21,64 @@ import { toast } from "sonner";
 
 // Sample categories data
 const sampleCategories = [
-  { id: 1, name: "Housing", icon: "🏠", color: "#22c55e" },
-  { id: 2, name: "Food", icon: "🍔", color: "#f97316" },
-  { id: 3, name: "Transportation", icon: "🚗", color: "#3b82f6" },
-  { id: 4, name: "Entertainment", icon: "🎬", color: "#a855f7" },
-  { id: 5, name: "Shopping", icon: "🛒", color: "#ec4899" },
-  { id: 6, name: "Utilities", icon: "💡", color: "#64748b" },
-  { id: 7, name: "Healthcare", icon: "🏥", color: "#ef4444" },
-  { id: 8, name: "Salary", icon: "💰", color: "#22c55e" },
-  { id: 9, name: "Freelance", icon: "💻", color: "#3b82f6" },
-  { id: 10, name: "Investment", icon: "📈", color: "#a855f7" },
+	{ id: 1, name: "Housing", icon: "🏠", color: "#22c55e" },
+	{ id: 2, name: "Food", icon: "🍔", color: "#f97316" },
+	{ id: 3, name: "Transportation", icon: "🚗", color: "#3b82f6" },
+	{ id: 4, name: "Entertainment", icon: "🎬", color: "#a855f7" },
+	{ id: 5, name: "Shopping", icon: "🛒", color: "#ec4899" },
+	{ id: 6, name: "Utilities", icon: "💡", color: "#64748b" },
+	{ id: 7, name: "Healthcare", icon: "🏥", color: "#ef4444" },
+	{ id: 8, name: "Salary", icon: "💰", color: "#22c55e" },
+	{ id: 9, name: "Freelance", icon: "💻", color: "#3b82f6" },
+	{ id: 10, name: "Investment", icon: "📈", color: "#a855f7" },
 ];
 
 // Sample wallets data
 const sampleWallets = [
-  {
-    id: 1,
-    name: "Checking Account",
-    type: "bank",
-    balance: 3500,
-    color: "#3b82f6",
-  },
-  {
-    id: 2,
-    name: "Savings Account",
-    type: "savings",
-    balance: 12000,
-    color: "#22c55e",
-  },
-  {
-    id: 3,
-    name: "Credit Card",
-    type: "card",
-    balance: -1200,
-    color: "#ef4444",
-  },
-  { id: 4, name: "Cash", type: "cash", balance: 300, color: "#f97316" },
+	{
+		id: 1,
+		name: "Checking Account",
+		type: "bank",
+		balance: 3500,
+		color: "#3b82f6",
+	},
+	{
+		id: 2,
+		name: "Savings Account",
+		type: "savings",
+		balance: 12000,
+		color: "#22c55e",
+	},
+	{
+		id: 3,
+		name: "Credit Card",
+		type: "card",
+		balance: -1200,
+		color: "#ef4444",
+	},
+	{ id: 4, name: "Cash", type: "cash", balance: 300, color: "#f97316" },
 ];
 
-
 export function TransactionsContent() {
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState<any>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [walletFilter, setWalletFilter] = useState("all");
-  const supabase = createClient();
+	const [transactions, setTransactions] = useState<any[]>([]);
+	const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
+	const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+	const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+	const [editingTransaction, setEditingTransaction] = useState<any>(null);
+	const [searchTerm, setSearchTerm] = useState("");
+	const [typeFilter, setTypeFilter] = useState("all");
+	const [categoryFilter, setCategoryFilter] = useState("all");
+	const [walletFilter, setWalletFilter] = useState("all");
+	const [categories, setCategories] = useState<any[]>([]);
+	const [wallets, setWallets] = useState<any[]>([]);
+	const supabase = createClient();
 
-  const fetchTransactions = async (supabase: any, userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("transactions")
-        .select(
-          `
+	const fetchTransactions = async (supabase: any, userId: string) => {
+		try {
+			const { data, error } = await supabase
+				.from("transactions")
+				.select(
+					`
         *,
         category:categories (
           id,
@@ -93,310 +94,370 @@ export function TransactionsContent() {
           color
         )
       `
-        )
-        .eq("user_id", userId)
-        .order("date", { ascending: false });
+				)
+				.eq("user_id", userId)
+				.order("date", { ascending: false });
 
-      if (error) {
-        console.error("Error fetching transactions:", error.message);
-        toast.error("Failed to fetch transactions. Please try again.");
-        return [];
-      }
+			if (error) {
+				console.error("Error fetching transactions:", error.message);
+				toast.error("Failed to fetch transactions. Please try again.");
+				return [];
+			}
 
-      console.log("Transactions fetched:", data.length);
-      return data;
-    } catch (error) {
-      console.error("Unexpected error fetching transactions:", error);
-      toast.error("An unexpected error occurred while fetching transactions.");
-      return [];
-    }
-  };
+			console.log("Transactions fetched:", data.length);
+			return data;
+		} catch (error) {
+			console.error("Unexpected error fetching transactions:", error);
+			toast.error(
+				"An unexpected error occurred while fetching transactions."
+			);
+			return [];
+		}
+	};
 
-  // Initialize with sample data
-  useEffect(() => {
-    const loadTransactions = async () => {
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser();
+	// Initialize with sample data
+	useEffect(() => {
+		const loadInitialData = async () => {
+			const {
+				data: { user },
+				error,
+			} = await supabase.auth.getUser();
 
-      if (error || !user) {
-        toast.error("Authentication failed. Please log in again.");
-        return;
-      }
+			if (error || !user) {
+				toast.error("Authentication failed. Please log in again.");
+				return;
+			}
 
-      const fetched = await fetchTransactions(supabase, user.id);
-      setTransactions(fetched);
-      setFilteredTransactions(fetched);
-    };
+			const [fetchedTransactions, categoryRes, walletRes] =
+				await Promise.all([
+					fetchTransactions(supabase, user.id),
 
-    loadTransactions();
-  }, []);
+					supabase
+						.from("categories")
+						.select("*")
+						.eq("user_id", user.id),
 
-  // Filter transactions based on search and filters
-  useEffect(() => {
-    let filtered = transactions;
+					supabase.from("wallets").select("*").eq("user_id", user.id),
+				]);
 
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (transaction) =>
-          transaction.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          transaction.category.name
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          transaction.wallet.name
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())
-      );
-    }
+			if (categoryRes.error) {
+				toast.error("Failed to load categories.");
+				console.error(categoryRes.error.message);
+			} else {
+				setCategories(categoryRes.data || []);
+			}
 
-    // Type filter
-    if (typeFilter !== "all") {
-      filtered = filtered.filter(
-        (transaction) => transaction.type === typeFilter
-      );
-    }
+			if (walletRes.error) {
+				toast.error("Failed to load wallets.");
+				console.error(walletRes.error.message);
+			} else {
+				setWallets(walletRes.data || []);
+			}
 
-    // Category filter
-    if (categoryFilter !== "all") {
-      filtered = filtered.filter(
-        (transaction) =>
-          transaction.category.id === Number.parseInt(categoryFilter)
-      );
-    }
+			setTransactions(fetchedTransactions);
+			setFilteredTransactions(fetchedTransactions);
+		};
 
-    // Wallet filter
-    if (walletFilter !== "all") {
-      filtered = filtered.filter(
-        (transaction) => transaction.wallet.id === Number.parseInt(walletFilter)
-      );
-    }
+		loadInitialData();
+	}, []);
 
-    setFilteredTransactions(filtered);
-    console.log("🔍 Filtered transactions:", filtered.length, "results");
-  }, [transactions, searchTerm, typeFilter, categoryFilter, walletFilter]);
+	// Filter transactions based on search and filters
+	useEffect(() => {
+		let filtered = transactions;
 
-  // Add transaction function
-  // Add a new transaction to the database
-  const handleAddTransaction = async (newTransaction: any) => {
-    try {
-      console.log("New Transactions: ", newTransaction);
-      // Get the currently authenticated user
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+		// Search filter
+		if (searchTerm) {
+			filtered = filtered.filter(
+				(transaction) =>
+					transaction.name
+						.toLowerCase()
+						.includes(searchTerm.toLowerCase()) ||
+					transaction.category.name
+						.toLowerCase()
+						.includes(searchTerm.toLowerCase()) ||
+					transaction.wallet.name
+						.toLowerCase()
+						.includes(searchTerm.toLowerCase())
+			);
+		}
 
-      if (userError || !user) {
-        //console.error("Failed to get user:", userError?.message);
-        toast.error("Authentication error. Please try logging in again.");
-        return;
-      }
+		// Type filter
+		if (typeFilter !== "all") {
+			filtered = filtered.filter(
+				(transaction) => transaction.type === typeFilter
+			);
+		}
 
-      const transactionToInsert = {
-        ...newTransaction,
-        user_id: user.id,
-      };
+		// Category filter
+		if (categoryFilter !== "all") {
+			filtered = filtered.filter(
+				(transaction) =>
+					transaction.category.id === Number.parseInt(categoryFilter)
+			);
+		}
 
-      const { data, error } = await supabase
-        .from("transactions")
-        .insert([transactionToInsert])
-        .select();
+		// Wallet filter
+		if (walletFilter !== "all") {
+			filtered = filtered.filter(
+				(transaction) =>
+					transaction.wallet.id === Number.parseInt(walletFilter)
+			);
+		}
 
-      if (error) {
-        console.error("Error inserting transaction:", error.message);
-        toast.error(`Failed to add transactions: ${error.message}`);
-        return;
-      }
+		setFilteredTransactions(filtered);
+		console.log("🔍 Filtered transactions:", filtered.length, "results");
+	}, [transactions, searchTerm, typeFilter, categoryFilter, walletFilter]);
 
-      // Close modal first
-      setIsAddModalOpen(false);
+	// Add transaction function
+	// Add a new transaction to the database
+	const handleAddTransaction = async (newTransaction: any) => {
+		try {
+			console.log("New Transactions: ", newTransaction);
+			// Get the currently authenticated user
+			const {
+				data: { user },
+				error: userError,
+			} = await supabase.auth.getUser();
 
-      // Refresh from database
-      //await fetchTransactions();
-    } catch (error) {
-      console.error("Unexpected error adding transactions:", error);
-      toast.error("An unexpected error occurred while adding the transaction.");
-    }
-  };
+			if (userError || !user) {
+				//console.error("Failed to get user:", userError?.message);
+				toast.error(
+					"Authentication error. Please try logging in again."
+				);
+				return;
+			}
 
-  // SIMULATED: Edit transaction function
-  const handleEditTransaction = (updatedTransaction: any) => {
-    console.log("✏️ Editing transaction:", updatedTransaction);
+			const transactionToInsert = {
+				...newTransaction,
+				user_id: user.id,
+			};
 
-    // Simulate API call delay
-    setTimeout(() => {
-      const updatedTransactions = transactions.map((transaction) =>
-        transaction.id === updatedTransaction.id
-          ? { ...updatedTransaction, updatedAt: new Date().toISOString() }
-          : transaction
-      );
+			const { data, error } = await supabase
+				.from("transactions")
+				.insert([transactionToInsert])
+				.select();
 
-      setTransactions(updatedTransactions);
+			if (error) {
+				console.error("Error inserting transaction:", error.message);
+				toast.error(`Failed to add transactions: ${error.message}`);
+				return;
+			}
 
-      console.log("✅ Transaction updated successfully:", updatedTransaction);
-      console.log(
-        "📊 Updated transactions list:",
-        updatedTransactions.length,
-        "total transactions"
-      );
+			// Close modal first
+			setIsAddModalOpen(false);
 
-      setIsEditModalOpen(false);
-      setEditingTransaction(null);
-    }, 500);
-  };
+			// Refresh from database
+			//await fetchTransactions();
+		} catch (error) {
+			console.error("Unexpected error adding transactions:", error);
+			toast.error(
+				"An unexpected error occurred while adding the transaction."
+			);
+		}
+	};
 
-  // SIMULATED: Delete transaction function
-  const handleDeleteTransaction = (transactionId: number) => {
-    console.log("🗑️ Deleting transaction with ID:", transactionId);
+	// SIMULATED: Edit transaction function
+	const handleEditTransaction = (updatedTransaction: any) => {
+		console.log("✏️ Editing transaction:", updatedTransaction);
 
-    // Simulate API call delay
-    setTimeout(() => {
-      const updatedTransactions = transactions.filter(
-        (transaction) => transaction.id !== transactionId
-      );
-      setTransactions(updatedTransactions);
+		// Simulate API call delay
+		setTimeout(() => {
+			const updatedTransactions = transactions.map((transaction) =>
+				transaction.id === updatedTransaction.id
+					? {
+							...updatedTransaction,
+							updatedAt: new Date().toISOString(),
+					  }
+					: transaction
+			);
 
-      console.log("✅ Transaction deleted successfully");
-      console.log(
-        "📊 Updated transactions list:",
-        updatedTransactions.length,
-        "total transactions"
-      );
-    }, 300);
-  };
+			setTransactions(updatedTransactions);
 
-  // Handle edit transaction
-  const handleEditClick = (transaction: any) => {
-    console.log("📝 Opening edit modal for transaction:", transaction);
-    setEditingTransaction(transaction);
-    setIsEditModalOpen(true);
-  };
+			console.log(
+				"✅ Transaction updated successfully:",
+				updatedTransaction
+			);
+			console.log(
+				"📊 Updated transactions list:",
+				updatedTransactions.length,
+				"total transactions"
+			);
 
-  // Clear all filters
-  const handleClearFilters = () => {
-    console.log("🧹 Clearing all filters");
-    setSearchTerm("");
-    setTypeFilter("all");
-    setCategoryFilter("all");
-    setWalletFilter("all");
-  };
+			setIsEditModalOpen(false);
+			setEditingTransaction(null);
+		}, 500);
+	};
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Transactions</h1>
-          <p className="text-muted-foreground">
-            Track your income and expenses
-          </p>
-        </div>
+	// SIMULATED: Delete transaction function
+	const handleDeleteTransaction = (transactionId: number) => {
+		console.log("🗑️ Deleting transaction with ID:", transactionId);
 
-        <Button onClick={() => setIsAddModalOpen(true)}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add Transaction
-        </Button>
-      </div>
+		// Simulate API call delay
+		setTimeout(() => {
+			const updatedTransactions = transactions.filter(
+				(transaction) => transaction.id !== transactionId
+			);
+			setTransactions(updatedTransactions);
 
-      {/* Summary Cards */}
-      <TransactionsSummary transactions={filteredTransactions} />
+			console.log("✅ Transaction deleted successfully");
+			console.log(
+				"📊 Updated transactions list:",
+				updatedTransactions.length,
+				"total transactions"
+			);
+		}, 300);
+	};
 
-      {/* Filters */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-        <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-          {/* Search */}
-          <div className="relative w-full sm:w-64">
-            <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="Search transactions..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+	// Handle edit transaction
+	const handleEditClick = (transaction: any) => {
+		console.log("📝 Opening edit modal for transaction:", transaction);
+		setEditingTransaction(transaction);
+		setIsEditModalOpen(true);
+	};
 
-          {/* Type Filter */}
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-full sm:w-32">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="income">Income</SelectItem>
-              <SelectItem value="expense">Expense</SelectItem>
-            </SelectContent>
-          </Select>
+	// Clear all filters
+	const handleClearFilters = () => {
+		console.log("🧹 Clearing all filters");
+		setSearchTerm("");
+		setTypeFilter("all");
+		setCategoryFilter("all");
+		setWalletFilter("all");
+	};
 
-          {/* Category Filter */}
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-full sm:w-40">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {sampleCategories.map((category) => (
-                <SelectItem key={category.id} value={category.id.toString()}>
-                  <div className="flex items-center">
-                    <span className="mr-2">{category.icon}</span>
-                    <span>{category.name}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+	return (
+		<div className="space-y-6">
+			{/* Header */}
+			<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+				<div>
+					<h1 className="text-2xl font-bold tracking-tight">
+						Transactions
+					</h1>
+					<p className="text-muted-foreground">
+						Track your income and expenses
+					</p>
+				</div>
 
-          {/* Wallet Filter */}
-          <Select value={walletFilter} onValueChange={setWalletFilter}>
-            <SelectTrigger className="w-full sm:w-40">
-              <SelectValue placeholder="Wallet" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Wallets</SelectItem>
-              {sampleWallets.map((wallet) => (
-                <SelectItem key={wallet.id} value={wallet.id.toString()}>
-                  {wallet.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+				<Button onClick={() => setIsAddModalOpen(true)}>
+					<PlusIcon className="h-4 w-4 mr-2" />
+					Add Transaction
+				</Button>
+			</div>
 
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleClearFilters}>
-            Clear Filters
-          </Button>
-          <Button variant="outline" size="sm">
-            <FilterIcon className="h-4 w-4 mr-2" />
-            Advanced
-          </Button>
-        </div>
-      </div>
+			{/* Summary Cards */}
+			<TransactionsSummary transactions={filteredTransactions} />
 
-      {/* Transactions List */}
-      <TransactionsList
-        transactions={filteredTransactions}
-        onEdit={handleEditClick}
-        onDelete={handleDeleteTransaction}
-      />
+			{/* Filters */}
+			<div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+				<div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+					{/* Search */}
+					<div className="relative w-full sm:w-64">
+						<SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+						<Input
+							placeholder="Search transactions..."
+							value={searchTerm}
+							onChange={(e) => setSearchTerm(e.target.value)}
+							className="pl-10"
+						/>
+					</div>
 
-      {/* Modals */}
-      <AddTransactionModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAdd={handleAddTransaction}
-      />
+					{/* Type Filter */}
+					<Select value={typeFilter} onValueChange={setTypeFilter}>
+						<SelectTrigger className="w-full sm:w-32">
+							<SelectValue placeholder="Type" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">All Types</SelectItem>
+							<SelectItem value="income">Income</SelectItem>
+							<SelectItem value="expense">Expense</SelectItem>
+						</SelectContent>
+					</Select>
 
-      <EditTransactionModal
-        isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setEditingTransaction(null);
-        }}
-        transaction={editingTransaction}
-        onUpdate={handleEditTransaction}
-      />
-    </div>
-  );
+					{/* Category Filter */}
+					<Select
+						value={categoryFilter}
+						onValueChange={setCategoryFilter}
+					>
+						<SelectTrigger className="w-full sm:w-40">
+							<SelectValue placeholder="Category" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">All Categories</SelectItem>
+							{categories.map((category) => (
+								<SelectItem
+									key={category.id}
+									value={category.id.toString()}
+								>
+									<div className="flex items-center">
+										<span className="mr-2">
+											{category.icon}
+										</span>
+										<span>{category.name}</span>
+									</div>
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+
+					{/* Wallet Filter */}
+					<Select
+						value={walletFilter}
+						onValueChange={setWalletFilter}
+					>
+						<SelectTrigger className="w-full sm:w-40">
+							<SelectValue placeholder="Wallet" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">All Wallets</SelectItem>
+							{wallets.map((wallet) => (
+								<SelectItem
+									key={wallet.id}
+									value={wallet.id.toString()}
+								>
+									{wallet.name}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+
+				<div className="flex gap-2">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={handleClearFilters}
+					>
+						Clear Filters
+					</Button>
+					<Button variant="outline" size="sm">
+						<FilterIcon className="h-4 w-4 mr-2" />
+						Advanced
+					</Button>
+				</div>
+			</div>
+
+			{/* Transactions List */}
+			<TransactionsList
+				transactions={filteredTransactions}
+				onEdit={handleEditClick}
+				onDelete={handleDeleteTransaction}
+			/>
+
+			{/* Modals */}
+			<AddTransactionModal
+				isOpen={isAddModalOpen}
+				onClose={() => setIsAddModalOpen(false)}
+				onAdd={handleAddTransaction}
+			/>
+
+			<EditTransactionModal
+				isOpen={isEditModalOpen}
+				onClose={() => {
+					setIsEditModalOpen(false);
+					setEditingTransaction(null);
+				}}
+				transaction={editingTransaction}
+				onUpdate={handleEditTransaction}
+			/>
+		</div>
+	);
 }

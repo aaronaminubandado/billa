@@ -19,46 +19,6 @@ import { TransactionsSummary } from "@/components/transactions/transactions-summ
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 
-// Sample categories data
-const sampleCategories = [
-	{ id: 1, name: "Housing", icon: "🏠", color: "#22c55e" },
-	{ id: 2, name: "Food", icon: "🍔", color: "#f97316" },
-	{ id: 3, name: "Transportation", icon: "🚗", color: "#3b82f6" },
-	{ id: 4, name: "Entertainment", icon: "🎬", color: "#a855f7" },
-	{ id: 5, name: "Shopping", icon: "🛒", color: "#ec4899" },
-	{ id: 6, name: "Utilities", icon: "💡", color: "#64748b" },
-	{ id: 7, name: "Healthcare", icon: "🏥", color: "#ef4444" },
-	{ id: 8, name: "Salary", icon: "💰", color: "#22c55e" },
-	{ id: 9, name: "Freelance", icon: "💻", color: "#3b82f6" },
-	{ id: 10, name: "Investment", icon: "📈", color: "#a855f7" },
-];
-
-// Sample wallets data
-const sampleWallets = [
-	{
-		id: 1,
-		name: "Checking Account",
-		type: "bank",
-		balance: 3500,
-		color: "#3b82f6",
-	},
-	{
-		id: 2,
-		name: "Savings Account",
-		type: "savings",
-		balance: 12000,
-		color: "#22c55e",
-	},
-	{
-		id: 3,
-		name: "Credit Card",
-		type: "card",
-		balance: -1200,
-		color: "#ef4444",
-	},
-	{ id: 4, name: "Cash", type: "cash", balance: 300, color: "#f97316" },
-];
-
 export function TransactionsContent() {
 	const [transactions, setTransactions] = useState<any[]>([]);
 	const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);

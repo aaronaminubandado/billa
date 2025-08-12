@@ -171,7 +171,7 @@ export default function BudgetPage() {
 		setIsAddModalOpen(false);
 	};
 
-	// Handle editing a budget
+	// Handle editing a budget (Implement)
 	const handleEditBudget = (updatedBudget: EditBudgetInput) => {
 		// In a real app, this would make an API call
 		console.log("Updating budget:", updatedBudget);
@@ -193,7 +193,7 @@ export default function BudgetPage() {
 		setIsEditModalOpen(false);
 	};
 
-	// Handle deleting a budget
+	// Handle deleting a budget 
 	const handleDeleteBudget = (budgetId: number) => {
 		// In a real app, this would make an API call
 		console.log("Deleting budget:", budgetId);

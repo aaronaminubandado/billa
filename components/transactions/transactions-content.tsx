@@ -248,6 +248,7 @@ export function TransactionsContent() {
 		}, 500);
 	};
 
+    //Delete transaction
 	// SIMULATED: Delete transaction function
 	const handleDeleteTransaction = (transactionId: number) => {
 		console.log("🗑️ Deleting transaction with ID:", transactionId);

@@ -131,7 +131,8 @@ export default function BudgetPage() {
 	}, []);
 
 
-    
+
+	// Add budget and refresh
 	const handleAddBudget = async (newBudget: NewBudgetInput) => {
 		const {
 			data: { user },
@@ -143,20 +144,16 @@ export default function BudgetPage() {
 			return;
 		}
 
-		const { data, error } = await supabase
-			.from("budgets")
-			.insert([
-				{
-					user_id: user.id,
-					name: newBudget.name,
-					amount: newBudget.amount,
-					category_id: newBudget.categoryId,
-					period: newBudget.period,
-					start_date: new Date(), // Default to today
-				},
-			])
-			.select("*, category:categories(*)")
-			.single();
+		const { error } = await supabase.from("budgets").insert([
+			{
+				user_id: user.id,
+				name: newBudget.name,
+				amount: newBudget.amount,
+				category_id: newBudget.categoryId,
+				period: newBudget.period,
+				start_date: new Date(),
+			},
+		]);
 
 		if (error) {
 			toast.error("Failed to add budget.");
@@ -164,15 +161,8 @@ export default function BudgetPage() {
 			return;
 		}
 
-		const newEntry: Budget = {
-			id: data.id,
-			name: data.name,
-			amount: parseFloat(data.amount),
-			used: 0,
-			period: data.period,
-		};
-
 		setIsAddModalOpen(false);
+		await fetchBudgets(); 
 	};
 
 	// Handle editing a budget (Implement)

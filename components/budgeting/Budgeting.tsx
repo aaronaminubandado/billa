@@ -127,7 +127,7 @@ export default function BudgetPage() {
 
 	useEffect(() => {
 		fetchBudgets();
-	}, []);
+	},  [fetchBudgets]);
 
 	// Add budget and refresh
 	const handleAddBudget = async (newBudget: NewBudgetInput) => {
@@ -151,6 +151,14 @@ export default function BudgetPage() {
 				start_date: new Date(),
 			},
 		]);
+
+		if (error) {
+			toast.error("Failed to add budget.");
+			console.error(error);
+			return;
+		}
+
+		toast.success("Budget added successfully!");
 
 		if (error) {
 			toast.error("Failed to add budget.");
@@ -190,27 +198,40 @@ export default function BudgetPage() {
 			return;
 		}
 
+        toast.success("Budget edited successfully!");
 		setIsEditModalOpen(false);
 		await fetchBudgets();
 	};
 
-	// Handle deleting a budget
-	const handleDeleteBudget = (budgetId: number) => {
-		// In a real app, this would make an API call
-		console.log("Deleting budget:", budgetId);
+	// Delete budget and refresh
+	const handleDeleteBudget = async (budgetId: number) => {
+		const {
+			data: { user },
+			error: userError,
+		} = await supabase.auth.getUser();
 
-		const updatedData = budgetData
-			.map((group) => ({
-				...group,
-				budgets: group.budgets.filter(
-					(budget) => budget.id !== budgetId
-				),
-			}))
-			.filter((group) => group.budgets.length > 0);
+		if (userError || !user) {
+			toast.error("User not authenticated.");
+			return;
+		}
 
-		setBudgetData(updatedData);
+		const { error } = await supabase
+			.from("budgets")
+			.delete()
+			.eq("id", budgetId)
+			.eq("user_id", user.id);
+
+		if (error) {
+			toast.error("Failed to delete budget.");
+			console.error(error);
+			return;
+		}
+
+        toast.success("Budget deleted successfully!");
 		setIsEditModalOpen(false);
+		await fetchBudgets();
 	};
+
 
 	// Open edit modal with selected budget
 	const openEditModal = (budget: Budget, category: BudgetCategory) => {

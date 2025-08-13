@@ -176,7 +176,7 @@ export function TransactionsContent() {
 				error: userError,
 			} = await supabase.auth.getUser();
 			if (userError || !user) {
-				toast.error("Authentication error. Please log inn again.");
+				toast.error("Authentication error. Please log in again.");
 				return;
 			}
 
@@ -210,36 +210,49 @@ export function TransactionsContent() {
 		}
 	};
 
-	// SIMULATED: Edit transaction function
-	const handleEditTransaction = (updatedTransaction: any) => {
-		console.log("✏️ Editing transaction:", updatedTransaction);
+	// Edit transaction function
+	const handleEditTransaction = async (updatedTransaction: any) => {
+		try {
+			const { category, wallet, ...transactionColumns } =
+				updatedTransaction;
 
-		// Simulate API call delay
-		setTimeout(() => {
-			const updatedTransactions = transactions.map((transaction) =>
-				transaction.id === updatedTransaction.id
-					? {
-							...updatedTransaction,
-							updatedAt: new Date().toISOString(),
-					  }
-					: transaction
-			);
+			const cleanedTransaction = {
+				...transactionColumns,
+				category_id: updatedTransaction.category_id,
+				wallet_id: updatedTransaction.wallet_id,
+			};
 
-			setTransactions(updatedTransactions);
+			const { error } = await supabase
+				.from("transactions")
+				.update(cleanedTransaction)
+				.eq("id", updatedTransaction.id);
 
-			console.log(
-				"✅ Transaction updated successfully:",
-				updatedTransaction
-			);
-			console.log(
-				"📊 Updated transactions list:",
-				updatedTransactions.length,
-				"total transactions"
-			);
+			if (error) {
+				toast.error(`Failed to update transaction`);
+				return;
+			}
 
+			toast.success("Transaction updated successfully.");
 			setIsEditModalOpen(false);
 			setEditingTransaction(null);
-		}, 500);
+
+			//Refresh transactions from the database
+			//NOTE: Try to find a better way to do this
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
+			if (user) {
+				const refreshedTransactions = await fetchTransactions(
+					supabase,
+					user.id
+				);
+				setTransactions(refreshedTransactions);
+				setFilteredTransactions(refreshedTransactions);
+			}
+		} catch (error) {
+			console.error(error);
+			toast.error("Unexpected error while updating transactions");
+		}
 	};
 
 	//Delete transaction

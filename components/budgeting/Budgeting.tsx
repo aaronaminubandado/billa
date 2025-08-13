@@ -69,7 +69,7 @@ export default function BudgetPage() {
 	const [budgetData, setBudgetData] = useState<BudgetData[]>([]);
 	const supabase = createClient();
 
-    //Fetch budgets function
+	//Fetch budgets function
 	const fetchBudgets = async () => {
 		const {
 			data: { user },
@@ -125,12 +125,9 @@ export default function BudgetPage() {
 		setBudgetData(grouped);
 	};
 
-
 	useEffect(() => {
 		fetchBudgets();
 	}, []);
-
-
 
 	// Add budget and refresh
 	const handleAddBudget = async (newBudget: NewBudgetInput) => {
@@ -162,29 +159,39 @@ export default function BudgetPage() {
 		}
 
 		setIsAddModalOpen(false);
-		await fetchBudgets(); 
+		await fetchBudgets();
 	};
 
-	// Handle editing a budget (Implement)
-	const handleEditBudget = (updatedBudget: EditBudgetInput) => {
-		// In a real app, this would make an API call
-		console.log("Updating budget:", updatedBudget);
+	// Edit budget and refresh
+	const handleEditBudget = async (updatedBudget: EditBudgetInput) => {
+		const {
+			data: { user },
+			error: userError,
+		} = await supabase.auth.getUser();
 
-		const updatedData = budgetData.map((group) => {
-			const updatedBudgets = group.budgets.map((budget) =>
-				budget.id === updatedBudget.id
-					? { ...budget, ...updatedBudget }
-					: budget
-			);
+		if (userError || !user) {
+			toast.error("User not authenticated.");
+			return;
+		}
 
-			return {
-				...group,
-				budgets: updatedBudgets,
-			};
-		});
+		const { error } = await supabase
+			.from("budgets")
+			.update({
+				name: updatedBudget.name,
+				amount: updatedBudget.amount,
+				period: updatedBudget.period,
+			})
+			.eq("id", updatedBudget.id)
+			.eq("user_id", user.id);
 
-		setBudgetData(updatedData);
+		if (error) {
+			toast.error("Failed to update budget.");
+			console.error(error);
+			return;
+		}
+
 		setIsEditModalOpen(false);
+		await fetchBudgets();
 	};
 
 	// Handle deleting a budget

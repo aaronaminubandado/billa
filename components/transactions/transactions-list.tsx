@@ -27,7 +27,7 @@ import { CreditCardIcon } from "lucide-react";
 interface TransactionsListProps {
   transactions: any[];
   onEdit: (transaction: any) => void;
-  onDelete: (transactionId: number) => void;
+  onDelete: (transactionId: string) => void;
 }
 
 export function TransactionsList({

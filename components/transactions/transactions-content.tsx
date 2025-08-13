@@ -165,7 +165,6 @@ export function TransactionsContent() {
 		}
 
 		setFilteredTransactions(filtered);
-		console.log("🔍 Filtered transactions:", filtered.length, "results");
 	}, [transactions, searchTerm, typeFilter, categoryFilter, walletFilter]);
 
 	// Add transaction function
@@ -255,37 +254,46 @@ export function TransactionsContent() {
 		}
 	};
 
-	//Delete transaction
-	// SIMULATED: Delete transaction function
-	const handleDeleteTransaction = (transactionId: number) => {
-		console.log("🗑️ Deleting transaction with ID:", transactionId);
+	//Delete transaction from DB
+	const handleDeleteTransaction = async (transactionId: string) => {
+		try {
+			const { error } = await supabase
+				.from("transactions")
+				.delete()
+				.eq("id", transactionId);
 
-		// Simulate API call delay
-		setTimeout(() => {
-			const updatedTransactions = transactions.filter(
-				(transaction) => transaction.id !== transactionId
-			);
-			setTransactions(updatedTransactions);
+			if (error) {
+				toast.error(`Failed to delete transaction`);
+				return;
+			}
 
-			console.log("✅ Transaction deleted successfully");
-			console.log(
-				"📊 Updated transactions list:",
-				updatedTransactions.length,
-				"total transactions"
-			);
-		}, 300);
+			toast.success("Transaction deleted successfully.");
+
+			//Refresh list
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
+			if (user) {
+				const refreshedTransactions = await fetchTransactions(
+					supabase,
+					user.id
+				);
+				setTransactions(refreshedTransactions);
+				setFilteredTransactions(refreshedTransactions);
+			}
+		} catch (error) {
+			toast.error("Unexpected error while deleting transaction.");
+		}
 	};
 
 	// Handle edit transaction
 	const handleEditClick = (transaction: any) => {
-		console.log("📝 Opening edit modal for transaction:", transaction);
 		setEditingTransaction(transaction);
 		setIsEditModalOpen(true);
 	};
 
 	// Clear all filters
 	const handleClearFilters = () => {
-		console.log("🧹 Clearing all filters");
 		setSearchTerm("");
 		setTypeFilter("all");
 		setCategoryFilter("all");

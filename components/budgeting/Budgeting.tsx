@@ -69,65 +69,69 @@ export default function BudgetPage() {
 	const [budgetData, setBudgetData] = useState<BudgetData[]>([]);
 	const supabase = createClient();
 
+    //Fetch budgets function
+	const fetchBudgets = async () => {
+		const {
+			data: { user },
+			error: userError,
+		} = await supabase.auth.getUser();
+
+		if (userError || !user) {
+			toast.error("Failed to load user.");
+			return;
+		}
+
+		const { data: budgets, error } = await supabase
+			.from("budgets")
+			.select("*, category:categories(*)")
+			.eq("user_id", user.id)
+			.order("created_at", { ascending: false });
+
+		if (error) {
+			toast.error("Failed to fetch budgets.");
+			console.error(error);
+			return;
+		}
+
+		// Group budgets by category
+		const grouped = budgets.reduce((acc: BudgetData[], budget) => {
+			const cat = budget.category;
+			let group = acc.find((g) => g.category.id === cat.id);
+
+			const budgetItem: Budget = {
+				id: budget.id,
+				name: budget.name,
+				amount: parseFloat(budget.amount),
+				used: 0,
+				period: budget.period,
+			};
+
+			if (group) {
+				group.budgets.push(budgetItem);
+			} else {
+				acc.push({
+					category: {
+						id: cat.id,
+						name: cat.name,
+						icon: cat.icon,
+						color: cat.color,
+					},
+					budgets: [budgetItem],
+				});
+			}
+			return acc;
+		}, []);
+
+		setBudgetData(grouped);
+	};
+
+
 	useEffect(() => {
-		const loadBudgets = async () => {
-			const {
-				data: { user },
-				error: userError,
-			} = await supabase.auth.getUser();
-
-			if (userError || !user) {
-				toast.error("Failed to load user.");
-				return;
-			}
-
-			const { data: budgets, error } = await supabase
-				.from("budgets")
-				.select("*, category:categories(*)")
-				.eq("user_id", user.id);
-
-			if (error) {
-				toast.error("Failed to fetch budgets.");
-				console.error(error);
-				return;
-			}
-
-			// Group budgets by category
-			const grouped = budgets.reduce((acc: BudgetData[], budget) => {
-				const cat = budget.category;
-				let group = acc.find((g) => g.category.id === cat.id);
-
-				const budgetItem: Budget = {
-					id: budget.id,
-					name: budget.name,
-					amount: parseFloat(budget.amount),
-					used: 0, // Fill this in later with actual transaction data
-					period: budget.period,
-				};
-
-				if (group) {
-					group.budgets.push(budgetItem);
-				} else {
-					acc.push({
-						category: {
-							id: cat.id,
-							name: cat.name,
-							icon: cat.icon,
-							color: cat.color,
-						},
-						budgets: [budgetItem],
-					});
-				}
-
-				return acc;
-			}, []);
-
-			setBudgetData(grouped);
-		};
-
-		loadBudgets();
+		fetchBudgets();
 	}, []);
 
+
+    
 	const handleAddBudget = async (newBudget: NewBudgetInput) => {
 		const {
 			data: { user },
@@ -193,7 +197,7 @@ export default function BudgetPage() {
 		setIsEditModalOpen(false);
 	};
 
-	// Handle deleting a budget 
+	// Handle deleting a budget
 	const handleDeleteBudget = (budgetId: number) => {
 		// In a real app, this would make an API call
 		console.log("Deleting budget:", budgetId);

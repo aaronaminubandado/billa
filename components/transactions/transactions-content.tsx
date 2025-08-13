@@ -169,21 +169,14 @@ export function TransactionsContent() {
 	}, [transactions, searchTerm, typeFilter, categoryFilter, walletFilter]);
 
 	// Add transaction function
-	// Add a new transaction to the database
 	const handleAddTransaction = async (newTransaction: any) => {
 		try {
-			console.log("New Transactions: ", newTransaction);
-			// Get the currently authenticated user
 			const {
 				data: { user },
 				error: userError,
 			} = await supabase.auth.getUser();
-
 			if (userError || !user) {
-				//console.error("Failed to get user:", userError?.message);
-				toast.error(
-					"Authentication error. Please try logging in again."
-				);
+				toast.error("Authentication error. Please log inn again.");
 				return;
 			}
 
@@ -192,27 +185,28 @@ export function TransactionsContent() {
 				user_id: user.id,
 			};
 
-			const { data, error } = await supabase
+			const { error } = await supabase
 				.from("transactions")
-				.insert([transactionToInsert])
-				.select();
+				.insert([transactionToInsert]);
 
 			if (error) {
-				console.error("Error inserting transaction:", error.message);
-				toast.error(`Failed to add transactions: ${error.message}`);
+				toast.error(`Failed to add transaction`);
 				return;
 			}
 
-			// Close modal first
+			toast.success("Transaction added successfully.");
 			setIsAddModalOpen(false);
 
-			// Refresh from database
-			//await fetchTransactions();
-		} catch (error) {
-			console.error("Unexpected error adding transactions:", error);
-			toast.error(
-				"An unexpected error occurred while adding the transaction."
+			//refresh transactions from the db
+			const refreshedTransactions = await fetchTransactions(
+				supabase,
+				user.id
 			);
+			setTransactions(refreshedTransactions);
+			setFilteredTransactions(refreshedTransactions);
+		} catch (error) {
+			console.error(error);
+			toast.error("Unexpected error while adding the transaction.");
 		}
 	};
 
@@ -248,7 +242,7 @@ export function TransactionsContent() {
 		}, 500);
 	};
 
-    //Delete transaction
+	//Delete transaction
 	// SIMULATED: Delete transaction function
 	const handleDeleteTransaction = (transactionId: number) => {
 		console.log("🗑️ Deleting transaction with ID:", transactionId);

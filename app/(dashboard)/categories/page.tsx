@@ -64,6 +64,7 @@ export default function CategoriesPage() {
 
 	const fetchCategories = async () => {
 		try {
+			// Get logged-in user
 			const {
 				data: { user },
 				error: userError,
@@ -71,54 +72,51 @@ export default function CategoriesPage() {
 
 			if (userError || !user) {
 				console.error("Error fetching user:", userError?.message);
-				return false; // Return false to indicate failure
+				return false;
 			}
 
-            
+
+			// Fetch categories + embedded transaction aggregates
 			const { data, error } = await supabase
 				.from("categories")
-				.select("*")
+				.select(
+					`
+                id,
+                name,
+                type,
+                color,
+                icon,
+                transactions:transactions(count),
+                totals:transactions(sum_amount:amount)
+            `
+				)
 				.eq("user_id", user.id);
 
 			if (error) {
 				toast.error("Failed to load categories");
+				console.error(error);
 				return false;
 			}
 
-            //Fetch user transactions
-			const { data: transactionsData, error: transactionError } = await supabase
-				.from("transactions")
-				.select("id,category_id")
-				.eq("user_id", user.id);
 
-			if (transactionError) {
-				toast.error("Failed to load transactions");
-				return false;
-			}
-
-            //Count transactions for each category
-			const transactionCounts: Record<string, number> = {};
-
-			transactionsData.forEach((t) => {
-				transactionCounts[t.category_id] =
-					(transactionCounts[t.category_id] || 0) + 1;
-			});
-
-            //Attach counts for each category
-			const formattedCategories: Category[] = data.map((category) => ({
+			const formatted = data.map((category) => ({
 				...category,
-				transactionCount: transactionCounts[category.id] || 0,
+				// Extract count from relation response (array of rows)
+				transactionCount: category.transactions?.[0]?.count || 0,
+
+				// Extract total from relation response (array with aggregated sum)
+				totalAmount: category.totals?.[0]?.sum_amount || 0,
 			}));
 
-			setCategories(formattedCategories);
-			return true; // Return true to indicate success
+			setCategories(formatted);
+			return true;
 		} catch (error) {
-			toast.error(
-				"An unexpected error occurred while loading categories."
-			);
+			console.error(error);
+			toast.error("Unexpected error loading categories");
 			return false;
 		}
 	};
+
 	useEffect(() => {
 		fetchCategories();
 	}, []);

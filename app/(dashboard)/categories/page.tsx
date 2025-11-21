@@ -75,7 +75,6 @@ export default function CategoriesPage() {
 				return false;
 			}
 
-
 			// Fetch categories + embedded transaction aggregates
 			const { data, error } = await supabase
 				.from("categories")
@@ -97,7 +96,6 @@ export default function CategoriesPage() {
 				console.error(error);
 				return false;
 			}
-
 
 			const formatted = data.map((category) => ({
 				...category,
@@ -127,11 +125,18 @@ export default function CategoriesPage() {
 	});
 
 	// Handle category deletion
-	const handleDeleteCategory = async (id: number) => {
+	const handleDeleteCategory = async (category: Category) => {
+		if (category.transactionCount > 0) {
+			toast.warning(
+				"You cannot delete this category because it has transactions."
+			);
+			return;
+		}
+
 		const { error } = await supabase
 			.from("categories")
 			.delete()
-			.eq("id", id);
+			.eq("id", category.id);
 
 		if (error) {
 			toast.error("An error occurred. Try again later.");
@@ -369,7 +374,7 @@ export default function CategoriesPage() {
 													<DropdownMenuItem
 														onClick={() =>
 															handleDeleteCategory(
-																category.id
+																category
 															)
 														}
 														className="text-red-600 dark:text-red-400"

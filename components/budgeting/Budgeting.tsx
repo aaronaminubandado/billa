@@ -43,14 +43,12 @@ interface BudgetData {
 // New interfaces for input types
 interface NewBudgetInput {
 	categoryId: string;
-	name: string;
 	amount: number;
 	period: string;
 }
 
 interface EditBudgetInput {
 	id: number;
-	name: string;
 	amount: number;
 	period: string;
 }
@@ -93,23 +91,33 @@ export default function BudgetPage() {
 			return;
 		}
 
-		// Group budgets by category
-		const grouped = budgets.reduce((acc: BudgetData[], budget) => {
+		// Prepare grouped budgets array
+		const grouped: BudgetData[] = [];
+
+		for (const budget of budgets) {
 			const cat = budget.category;
-			let group = acc.find((g) => g.category.id === cat.id);
+
+			// Calculate used amount for this budget
+			const used = await getCategorySpending(
+				budget.category_id,
+				budget.period,
+				budget.start_date
+			);
 
 			const budgetItem: Budget = {
 				id: budget.id,
 				name: budget.name,
 				amount: parseFloat(budget.amount),
-				used: 0,
+				used,
 				period: budget.period,
 			};
 
+			// Check if category group already exists
+			let group = grouped.find((g) => g.category.id === cat.id);
 			if (group) {
 				group.budgets.push(budgetItem);
 			} else {
-				acc.push({
+				grouped.push({
 					category: {
 						id: cat.id,
 						name: cat.name,
@@ -119,15 +127,14 @@ export default function BudgetPage() {
 					budgets: [budgetItem],
 				});
 			}
-			return acc;
-		}, []);
+		}
 
 		setBudgetData(grouped);
 	};
 
 	useEffect(() => {
 		fetchBudgets();
-	},  [fetchBudgets]);
+	}, [fetchBudgets]);
 
 	// Add budget and refresh
 	const handleAddBudget = async (newBudget: NewBudgetInput) => {
@@ -144,7 +151,6 @@ export default function BudgetPage() {
 		const { error } = await supabase.from("budgets").insert([
 			{
 				user_id: user.id,
-				name: newBudget.name,
 				amount: newBudget.amount,
 				category_id: newBudget.categoryId,
 				period: newBudget.period,
@@ -185,7 +191,6 @@ export default function BudgetPage() {
 		const { error } = await supabase
 			.from("budgets")
 			.update({
-				name: updatedBudget.name,
 				amount: updatedBudget.amount,
 				period: updatedBudget.period,
 			})
@@ -198,7 +203,7 @@ export default function BudgetPage() {
 			return;
 		}
 
-        toast.success("Budget edited successfully!");
+		toast.success("Budget edited successfully!");
 		setIsEditModalOpen(false);
 		await fetchBudgets();
 	};
@@ -227,11 +232,63 @@ export default function BudgetPage() {
 			return;
 		}
 
-        toast.success("Budget deleted successfully!");
+		toast.success("Budget deleted successfully!");
 		setIsEditModalOpen(false);
 		await fetchBudgets();
 	};
 
+	// Fetch total spending for a category in the active budget period.
+	const getCategorySpending = async (
+		categoryId: string,
+		period: string,
+		start_date: string
+	) => {
+		const {
+			data: { user },
+		} = await supabase.auth.getUser();
+
+		if (!user) return 0;
+
+		// Compute DATE RANGE for this budget
+		let rangeStart = new Date(start_date);
+		let rangeEnd = new Date();
+
+		switch (period) {
+			case "weekly":
+				rangeEnd = new Date(rangeStart);
+				rangeEnd.setDate(rangeStart.getDate() + 7);
+				break;
+			case "monthly":
+				rangeEnd = new Date(rangeStart);
+				rangeEnd.setMonth(rangeStart.getMonth() + 1);
+				break;
+			case "yearly":
+				rangeEnd = new Date(rangeStart);
+				rangeEnd.setFullYear(rangeStart.getFullYear() + 1);
+				break;
+		}
+
+		const { data, error } = await supabase
+			.from("transactions")
+			.select("amount, type, status")
+			.eq("user_id", user.id)
+			.eq("category_id", categoryId)
+			.eq("status", "active")
+			.eq("type", "expense")
+			.gte("created_at", rangeStart.toISOString())
+			.lte("created_at", rangeEnd.toISOString());
+
+		if (error) {
+			console.error("Failed to load transactions", error);
+			return 0;
+		}
+
+		// Only count EXPENSES.
+		// Ignore cancelled or reversed transactions.
+		return data
+			.filter((t) => t.type === "expense")
+			.reduce((sum, t) => sum + Number(t.amount), 0);
+	};
 
 	// Open edit modal with selected budget
 	const openEditModal = (budget: Budget, category: BudgetCategory) => {
@@ -239,20 +296,10 @@ export default function BudgetPage() {
 		setIsEditModalOpen(true);
 	};
 
-	// Filter budgets based on search query
-	const filteredBudgetData =
-		searchQuery.trim() === ""
-			? budgetData
-			: budgetData
-					.map((group) => ({
-						...group,
-						budgets: group.budgets.filter((budget) =>
-							budget.name
-								.toLowerCase()
-								.includes(searchQuery.toLowerCase())
-						),
-					}))
-					.filter((group) => group.budgets.length > 0);
+	// Filter budget categories based on search query
+	const filteredBudgetData = budgetData.filter((group) =>
+		group.category.name.toLowerCase().includes(searchQuery.toLowerCase())
+	);
 
 	// Calculate total budgeted and used amounts
 	const totalBudgeted = budgetData.reduce(

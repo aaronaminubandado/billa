@@ -254,25 +254,26 @@ export function TransactionsContent() {
 		}
 	};
 
-	//Delete transaction from DB
-	const handleDeleteTransaction = async (transactionId: string) => {
+	//Cancel transaction from DB
+	const handleCancelTransaction = async (transactionId: string) => {
 		try {
 			const { error } = await supabase
 				.from("transactions")
-				.delete()
+				.update({ status: "canceled" }) // <-- NEW: update status
 				.eq("id", transactionId);
 
 			if (error) {
-				toast.error(`Failed to delete transaction`);
+				toast.error(`Failed to cancel transaction`);
 				return;
 			}
 
-			toast.success("Transaction deleted successfully.");
+			toast.success("Transaction canceled successfully.");
 
-			//Refresh list
+			// Refresh list
 			const {
 				data: { user },
 			} = await supabase.auth.getUser();
+
 			if (user) {
 				const refreshedTransactions = await fetchTransactions(
 					supabase,
@@ -282,7 +283,7 @@ export function TransactionsContent() {
 				setFilteredTransactions(refreshedTransactions);
 			}
 		} catch (error) {
-			toast.error("Unexpected error while deleting transaction.");
+			toast.error("Unexpected error while canceling transaction.");
 		}
 	};
 
@@ -415,7 +416,7 @@ export function TransactionsContent() {
 			<TransactionsList
 				transactions={filteredTransactions}
 				onEdit={handleEditClick}
-				onDelete={handleDeleteTransaction}
+				onCancel={handleCancelTransaction}
 			/>
 
 			{/* Modals */}

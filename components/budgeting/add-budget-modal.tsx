@@ -23,7 +23,6 @@ import { toast } from "sonner";
 
 interface NewBudgetInput {
 	categoryId: string;
-	name: string;
 	amount: number;
 	period: string;
 }
@@ -46,7 +45,6 @@ export function AddBudgetModal({
 	onClose,
 	onAdd,
 }: AddBudgetModalProps) {
-	const [name, setName] = useState("");
 	const [amount, setAmount] = useState("");
 	const [categoryId, setCategoryId] = useState("");
 	const [period, setPeriod] = useState("monthly");
@@ -89,13 +87,12 @@ export function AddBudgetModal({
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 
-		if (!name.trim() || !amount || !categoryId) {
+		if (!amount || !categoryId) {
 			alert("Please fill in all required fields");
 			return;
 		}
 
 		const newBudget = {
-			name,
 			amount: parseFloat(amount),
 			categoryId: categoryId,
 			period,
@@ -103,7 +100,6 @@ export function AddBudgetModal({
 
 		onAdd(newBudget);
 
-		setName("");
 		setAmount("");
 		setCategoryId("");
 		setPeriod("monthly");
@@ -114,43 +110,13 @@ export function AddBudgetModal({
 			<DialogHeader>
 				<DialogTitle>Add Budget</DialogTitle>
 				<DialogDescription>
-					Create a new budget to track your spending
+					Create a new budget for a category
 				</DialogDescription>
 			</DialogHeader>
 
 			<form onSubmit={handleSubmit}>
 				<div className="space-y-4 py-4">
-					<div className="space-y-2">
-						<Label htmlFor="name">Budget Name</Label>
-						<Input
-							id="name"
-							value={name}
-							onChange={(e) => setName(e.target.value)}
-							placeholder="e.g., Groceries, Rent, Entertainment"
-							required
-						/>
-					</div>
-
-					<div className="space-y-2">
-						<Label htmlFor="amount">Budget Amount</Label>
-						<div className="relative">
-							<span className="absolute left-3 top-2.5 text-muted-foreground">
-								$
-							</span>
-							<Input
-								id="amount"
-								type="number"
-								min="0"
-								step="0.01"
-								className="pl-7"
-								value={amount}
-								onChange={(e) => setAmount(e.target.value)}
-								placeholder="0.00"
-								required
-							/>
-						</div>
-					</div>
-
+					{/* Category Selection */}
 					<div className="space-y-2">
 						<Label htmlFor="category">Category</Label>
 						<Select
@@ -189,6 +155,28 @@ export function AddBudgetModal({
 						)}
 					</div>
 
+					{/* Amount */}
+					<div className="space-y-2">
+						<Label htmlFor="amount">Budget Amount</Label>
+						<div className="relative">
+							<span className="absolute left-3 top-2.5 text-muted-foreground">
+								$
+							</span>
+							<Input
+								id="amount"
+								type="number"
+								min="0"
+								step="0.01"
+								className="pl-7"
+								value={amount}
+								onChange={(e) => setAmount(e.target.value)}
+								placeholder="0.00"
+								required
+							/>
+						</div>
+					</div>
+
+					{/* Period */}
 					<div className="space-y-2">
 						<Label htmlFor="period">Budget Period</Label>
 						<Select value={period} onValueChange={setPeriod}>

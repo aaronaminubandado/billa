@@ -33,13 +33,16 @@ import { TrashIcon } from "lucide-react";
 interface EditBudgetModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  budget: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onUpdate: (budget: any) => void;
+  budget: {
+    id: number;
+    amount: number;
+    category: { id: number; name: string; icon: string; color: string };
+    period: string;
+    used: number;
+  };
+  onUpdate: (budget: { id: number; amount: number; categoryId: number; period: string }) => void;
   onDelete: (id: number) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  categories: any[];
+  categories: { id: number; name: string; icon: string; color: string }[];
 }
 
 export function EditBudgetModal({
@@ -50,45 +53,34 @@ export function EditBudgetModal({
   onDelete,
   categories,
 }: EditBudgetModalProps) {
-  const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [period, setPeriod] = useState("monthly");
-  const [used, setUsed] = useState(0);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // Set initial values when budget changes
   useEffect(() => {
     if (budget) {
-      setName(budget.name);
       setAmount(budget.amount.toString());
       setCategoryId(budget.category.id.toString());
       setPeriod(budget.period);
-      setUsed(budget.used);
     }
   }, [budget]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate form
-    if (!name.trim() || !amount || !categoryId) {
-      // TODO: Add proper form validation and error messages
+    if (!amount || !categoryId) {
       alert("Please fill in all required fields");
       return;
     }
 
-    // Create updated budget object
-    const updatedBudget = {
+    onUpdate({
       id: budget.id,
-      name,
       amount: parseFloat(amount),
       categoryId: parseInt(categoryId),
       period,
-      used,
-    };
-
-    onUpdate(updatedBudget);
+    });
   };
 
   const handleDelete = () => {
@@ -106,17 +98,6 @@ export function EditBudgetModal({
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Budget Name</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., Groceries, Rent, Entertainment"
-                required
-              />
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="amount">Budget Amount</Label>
               <div className="relative">
@@ -145,10 +126,7 @@ export function EditBudgetModal({
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((category) => (
-                    <SelectItem
-                      key={category.id}
-                      value={category.id.toString()}
-                    >
+                    <SelectItem key={category.id} value={category.id.toString()}>
                       <div className="flex items-center">
                         <span className="mr-2">{category.icon}</span>
                         <span>{category.name}</span>
@@ -172,25 +150,6 @@ export function EditBudgetModal({
                   <SelectItem value="yearly">Yearly</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="used">Amount Used</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-2.5 text-muted-foreground">
-                  $
-                </span>
-                <Input
-                  id="used"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="pl-7"
-                  value={used}
-                  onChange={(e) => setUsed(parseFloat(e.target.value))}
-                  placeholder="0.00"
-                />
-              </div>
             </div>
           </div>
 
@@ -220,8 +179,7 @@ export function EditBudgetModal({
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the budget {"\""}{budget?.name} {"\""}. This
-              action cannot be undone.
+              This will permanently delete this budget. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

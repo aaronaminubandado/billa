@@ -1,191 +1,228 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { createClient } from "@/utils/supabase/client";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  Cell,
+	BarChart,
+	Bar,
+	XAxis,
+	YAxis,
+	CartesianGrid,
+	Tooltip,
+	ResponsiveContainer,
+	Cell,
 } from "recharts";
 
-// Sample categories with colors
-const categories = [
-  { id: 1, name: "Housing", color: "#22c55e", icon: "🏠" },
-  { id: 2, name: "Food", color: "#f97316", icon: "🍔" },
-  { id: 3, name: "Transportation", color: "#3b82f6", icon: "🚗" },
-  { id: 4, name: "Entertainment", color: "#a855f7", icon: "🎬" },
-  { id: 5, name: "Shopping", color: "#ec4899", icon: "🛒" },
-  { id: 6, name: "Utilities", color: "#64748b", icon: "💡" },
-  { id: 7, name: "Healthcare", color: "#ef4444", icon: "🏥" },
-  { id: 8, name: "Education", color: "#eab308", icon: "🎓" },
-];
+// TYPES
+interface Category {
+	id: string;
+	name: string;
+	color: string;
+	icon: string | null;
+}
 
-// Generate sample most used categories data
-const generateMostUsedCategoriesData = (timePeriod: string) => {
-  // In a real app, this would fetch data based on the time period
+interface TransactionRow {
+	category_id: string | null;
+	amount: number;
+	type: "income" | "expense";
+	created_at: string;
+	categories: Category | null;
+}
 
-  // Generate random transaction counts for each category
-  const data = categories
-    .map((category) => {
-      // Base transaction count
-      let baseCount = 0;
-      switch (category.name) {
-        case "Food":
-          baseCount = 25;
-          break;
-        case "Transportation":
-          baseCount = 18;
-          break;
-        case "Shopping":
-          baseCount = 12;
-          break;
-        case "Entertainment":
-          baseCount = 8;
-          break;
-        case "Utilities":
-          baseCount = 5;
-          break;
-        case "Housing":
-          baseCount = 3;
-          break;
-        case "Healthcare":
-          baseCount = 2;
-          break;
-        case "Education":
-          baseCount = 1;
-          break;
-        default:
-          baseCount = 5;
-      }
+export interface CategoryStat {
+	id: string;
+	name: string;
+	icon: string | null;
+	color: string;
+	count: number;
+	totalAmount: number;
+	avgAmount: number;
+}
 
-      // Adjust based on time period
-      const multiplier =
-        timePeriod === "week"
-          ? 0.25
-          : timePeriod === "month"
-          ? 1
-          : timePeriod === "quarter"
-          ? 3
-          : timePeriod === "year"
-          ? 12
-          : 1;
+// FETCH TRANSACTIONS + CATEGORIES
+const fetchCategoryStats = async (
+	supabase: ReturnType<typeof createClient>,
+	periodStart: string,
+	userId: string
+): Promise<TransactionRow[]> => {
+	const { data, error } = await supabase
+		.from("transactions")
+		.select(
+			`
+      category_id,
+      amount,
+      type,
+      created_at,
+      categories ( id, name, color, icon )
+    `
+		)
+		.gte("created_at", periodStart)
+		.eq("type", "expense")
+		.eq("user_id", userId);
 
-      // Add some randomness
-      const randomFactor = 0.8 + Math.random() * 0.4; // Between 0.8 and 1.2
-      const count = Math.round(baseCount * multiplier * randomFactor);
+	if (error) throw error;
 
-      // Calculate average amount per transaction
-      let avgAmount = 0;
-      switch (category.name) {
-        case "Housing":
-          avgAmount = 1200 / 3; // Assuming 3 transactions per month
-          break;
-        case "Food":
-          avgAmount = 500 / 25; // Assuming 25 transactions per month
-          break;
-        case "Transportation":
-          avgAmount = 300 / 18;
-          break;
-        case "Entertainment":
-          avgAmount = 200 / 8;
-          break;
-        case "Shopping":
-          avgAmount = 250 / 12;
-          break;
-        case "Utilities":
-          avgAmount = 150 / 5;
-          break;
-        case "Healthcare":
-          avgAmount = 100 / 2;
-          break;
-        case "Education":
-          avgAmount = 80 / 1;
-          break;
-        default:
-          avgAmount = 20;
-      }
-
-      return {
-        name: category.name,
-        count: count,
-        totalAmount: Math.round(count * avgAmount),
-        avgAmount: Math.round(avgAmount),
-        color: category.color,
-        icon: category.icon,
-      };
-    })
-    .sort((a, b) => b.count - a.count); // Sort by count descending
-
-  // Take top 6 categories
-  return data.slice(0, 6);
+	return (data ?? []).map((row: any) => ({
+		...row,
+		categories: row.categories ?? null,
+	})) as TransactionRow[];
 };
 
-// Custom tooltip for the chart
- // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const CustomTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-background border rounded-md shadow-md p-3 text-sm">
-        <p className="font-medium mb-1">{`${payload[0].payload.name} ${payload[0].payload.icon}`}</p>
-        <p className="text-muted-foreground">
-          Transactions: {payload[0].value}
-        </p>
-        <p className="text-muted-foreground">
-          Total: ${payload[0].payload.totalAmount.toLocaleString()}
-        </p>
-        <p className="text-muted-foreground">
-          Avg: ${payload[0].payload.avgAmount.toLocaleString()}/transaction
-        </p>
-      </div>
-    );
-  }
-  return null;
+// COMPUTE AGGREGATED CATEGORY STATS
+const computeCategoryStats = (rows: TransactionRow[]): CategoryStat[] => {
+	const stats: Record<string, CategoryStat> = {};
+
+	for (const row of rows) {
+		const cat = row.categories;
+		if (!cat) continue;
+
+		if (!stats[cat.id]) {
+			stats[cat.id] = {
+				id: cat.id,
+				name: cat.name,
+				icon: cat.icon,
+				color: cat.color,
+				count: 0,
+				totalAmount: 0,
+				avgAmount: 0,
+			};
+		}
+
+		stats[cat.id].count++;
+
+		if (row.type === "expense") {
+			stats[cat.id].totalAmount += row.amount;
+		}
+	}
+
+	return Object.values(stats)
+		.map((cat) => ({
+			...cat,
+			avgAmount:
+				cat.count > 0 ? Math.round(cat.totalAmount / cat.count) : 0,
+		}))
+		.sort((a, b) => b.count - a.count)
+		.slice(0, 6);
 };
 
+// TIME RANGE HANDLER
+const getPeriodStart = (period: string): Date => {
+	const now = new Date();
+	const copy = new Date(now);
+
+	switch (period) {
+		case "week":
+			copy.setDate(now.getDate() - 7);
+			break;
+		case "month":
+			copy.setMonth(now.getMonth() - 1);
+			break;
+		case "quarter":
+			copy.setMonth(now.getMonth() - 3);
+			break;
+		case "year":
+			copy.setFullYear(now.getFullYear() - 1);
+			break;
+		default:
+			copy.setMonth(now.getMonth() - 1);
+	}
+
+	return copy;
+};
+
+const CustomTooltip = ({
+	active,
+	payload,
+}: {
+	active?: boolean;
+	payload?: any[];
+}) => {
+	if (active && payload && payload.length) {
+		const row = payload[0].payload;
+
+		return (
+			<div className="bg-background border rounded-md shadow-md p-3 text-sm">
+				<p className="font-medium mb-1">
+					{row.name} {row.icon}
+				</p>
+				<p className="text-muted-foreground">
+					Transactions: {row.count}
+				</p>
+				<p className="text-muted-foreground">
+					Total: ${row.totalAmount.toLocaleString()}
+				</p>
+				<p className="text-muted-foreground">
+					Avg: ${row.avgAmount.toLocaleString()}/transaction
+				</p>
+			</div>
+		);
+	}
+	return null;
+};
+
+// MAIN COMPONENT
 interface MostUsedCategoriesChartProps {
-  timePeriod: string;
+	timePeriod: string;
 }
 
 export function MostUsedCategoriesChart({
-  timePeriod,
+	timePeriod,
 }: MostUsedCategoriesChartProps) {
-  const data = generateMostUsedCategoriesData(timePeriod);
+	const supabase = createClient();
+	const [chartData, setChartData] = useState<CategoryStat[]>([]);
 
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart
-        data={data}
-        layout="vertical"
-        margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
-      >
-        <CartesianGrid
-          strokeDasharray="3 3"
-          horizontal={true}
-          vertical={false}
-        />
-        <XAxis type="number" />
-        <YAxis
-          type="category"
-          dataKey="name"
-          tick={{ fontSize: 12 }}
-          width={100}
-          tickFormatter={(value) =>
-            `${value} ${data.find((item) => item.name === value)?.icon || ""}`
-          }
-        />
-        <Tooltip content={<CustomTooltip />} />
-        <Legend />
-        <Bar dataKey="count" name="Number of Transactions">
-          {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={entry.color} />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  );
+	useEffect(() => {
+		const load = async () => {
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
+			if (!user) return;
+
+			const periodStart = getPeriodStart(timePeriod).toISOString();
+			const rows = await fetchCategoryStats(
+				supabase,
+				periodStart,
+				user.id
+			);
+			const stats = computeCategoryStats(rows);
+
+			setChartData(stats);
+		};
+
+		load();
+	}, [timePeriod]);
+
+	return (
+		<ResponsiveContainer width="100%" height="100%">
+			<BarChart
+				data={chartData}
+				layout="vertical"
+				margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+			>
+				<CartesianGrid
+					strokeDasharray="3 3"
+					horizontal={true}
+					vertical={false}
+				/>
+				<XAxis type="number" />
+				<YAxis
+					type="category"
+					dataKey="name"
+					width={120}
+					tickFormatter={(value) => {
+						const match = chartData.find((c) => c.name === value);
+						return `${value} ${match?.icon ?? ""}`;
+					}}
+					tick={{ fontSize: 12 }}
+				/>
+				<Tooltip content={<CustomTooltip />} />
+
+				<Bar dataKey="count" name="Transactions">
+					{chartData.map((entry) => (
+						<Cell key={entry.id} fill={entry.color} />
+					))}
+				</Bar>
+			</BarChart>
+		</ResponsiveContainer>
+	);
 }

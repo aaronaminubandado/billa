@@ -36,7 +36,7 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
     { href: "/categories", icon: TagIcon, label: "Categories" },
     { href: "/goals", icon: TargetIcon, label: "Goals" },
     { href: "/budgeting", icon: PiggyBankIcon, label: "Budgeting" },
-    { href: "/reports", icon: LineChartIcon, label: "Reports" },
+    // { href: "/reports", icon: LineChartIcon, label: "Reports" },
     { href: "/settings", icon: SettingsIcon, label: "Settings" },
   ];
 

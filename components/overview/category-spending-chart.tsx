@@ -1,172 +1,240 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { createClient } from "@/utils/supabase/client";
 import {
-  PieChart,
-  Pie,
-  BarChart,
-  Bar,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
+	PieChart,
+	Pie,
+	BarChart,
+	Bar,
+	Cell,
+	XAxis,
+	YAxis,
+	CartesianGrid,
+	Tooltip,
+	Legend,
+	ResponsiveContainer,
 } from "recharts";
 
-// Sample categories with colors
-const categories = [
-  { id: 1, name: "Housing", color: "#22c55e", icon: "🏠" },
-  { id: 2, name: "Food", color: "#f97316", icon: "🍔" },
-  { id: 3, name: "Transportation", color: "#3b82f6", icon: "🚗" },
-  { id: 4, name: "Entertainment", color: "#a855f7", icon: "🎬" },
-  { id: 5, name: "Shopping", color: "#ec4899", icon: "🛒" },
-  { id: 6, name: "Utilities", color: "#64748b", icon: "💡" },
-  { id: 7, name: "Healthcare", color: "#ef4444", icon: "🏥" },
-  { id: 8, name: "Education", color: "#eab308", icon: "🎓" },
-];
-
-// Generate sample spending data
-const generateSpendingData = (timePeriod: string) => {
-  // In a real app, this would fetch data based on the time period
-  const multiplier =
-    timePeriod === "week"
-      ? 0.25
-      : timePeriod === "month"
-      ? 1
-      : timePeriod === "quarter"
-      ? 3
-      : timePeriod === "year"
-      ? 12
-      : 1;
-
-  return categories
-    .map((category) => {
-      // Generate a somewhat realistic amount based on category
-      let baseAmount = 0;
-      switch (category.name) {
-        case "Housing":
-          baseAmount = 1200;
-          break;
-        case "Food":
-          baseAmount = 500;
-          break;
-        case "Transportation":
-          baseAmount = 300;
-          break;
-        case "Entertainment":
-          baseAmount = 200;
-          break;
-        case "Shopping":
-          baseAmount = 250;
-          break;
-        case "Utilities":
-          baseAmount = 150;
-          break;
-        case "Healthcare":
-          baseAmount = 100;
-          break;
-        case "Education":
-          baseAmount = 80;
-          break;
-        default:
-          baseAmount = 100;
-      }
-
-      // Add some randomness
-      const randomFactor = 0.8 + Math.random() * 0.4; // Between 0.8 and 1.2
-      const amount = Math.round(baseAmount * multiplier * randomFactor);
-
-      return {
-        name: category.name,
-        value: amount,
-        color: category.color,
-        icon: category.icon,
-      };
-    })
-    .sort((a, b) => b.value - a.value); // Sort by value descending
-};
-
-// Custom tooltip for charts
- // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const CustomTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-background border rounded-md shadow-md p-2 text-sm">
-        <p className="font-medium">{`${payload[0].name} ${payload[0].payload.icon}`}</p>
-        <p className="text-muted-foreground">{`Amount: $${payload[0].value.toLocaleString()}`}</p>
-      </div>
-    );
-  }
-  return null;
-};
-
-interface CategorySpendingChartProps {
-  type: "pie" | "bar";
-  timePeriod: string;
+// TYPES
+interface Category {
+	id: string;
+	name: string;
+	color: string;
+	icon: string | null;
 }
 
+interface TransactionRow {
+	category_id: string | null;
+	amount: number;
+	type: "income" | "expense";
+	created_at: string;
+	categories: Category | null;
+}
+
+interface SpendingCategory {
+	id: string;
+	name: string;
+	icon: string | null;
+	color: string;
+	totalAmount: number;
+}
+
+interface CategorySpendingChartProps {
+	type: "pie" | "bar";
+	timePeriod: string;
+}
+
+// FETCH FROM SUPABASE
+const fetchSpendingRows = async (
+	supabase: ReturnType<typeof createClient>,
+	periodStart: string,
+	userId: string
+): Promise<TransactionRow[]> => {
+	const { data, error } = await supabase
+		.from("transactions")
+		.select(
+			`
+      category_id,
+      amount,
+      type,
+      created_at,
+      categories ( id, name, color, icon )
+    `
+		)
+		.gte("created_at", periodStart)
+		.eq("type", "expense")
+		.eq("user_id", userId);
+
+	if (error) throw error;
+
+	return (data ?? []).map((row: any) => ({
+		...row,
+		categories: row.categories ?? null,
+	})) as TransactionRow[];
+};
+
+// AGGREGATE TOTAL SPENDING PER CATEGORY
+const computeCategorySpending = (
+	rows: TransactionRow[]
+): SpendingCategory[] => {
+	const stats: Record<string, SpendingCategory> = {};
+
+	for (const row of rows) {
+		const cat = row.categories;
+		if (!cat) continue;
+
+		if (!stats[cat.id]) {
+			stats[cat.id] = {
+				id: cat.id,
+				name: cat.name,
+				icon: cat.icon,
+				color: cat.color,
+				totalAmount: 0,
+			};
+		}
+
+		stats[cat.id].totalAmount += row.amount;
+	}
+
+	return Object.values(stats).sort((a, b) => b.totalAmount - a.totalAmount);
+};
+
+// TIME PERIOD HANDLER
+const getPeriodStart = (period: string): Date => {
+	const now = new Date();
+	const copy = new Date(now);
+
+	switch (period) {
+		case "week":
+			copy.setDate(now.getDate() - 7);
+			break;
+		case "month":
+			copy.setMonth(now.getMonth() - 1);
+			break;
+		case "quarter":
+			copy.setMonth(now.getMonth() - 3);
+			break;
+		case "year":
+			copy.setFullYear(now.getFullYear() - 1);
+			break;
+		default:
+			copy.setMonth(now.getMonth() - 1);
+	}
+
+	return copy;
+};
+
+// TOOLTIP
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const CustomTooltip = ({ active, payload }: any) => {
+	if (active && payload && payload.length) {
+		const row = payload[0].payload;
+
+		return (
+			<div className="bg-background border rounded-md shadow-md p-2 text-sm">
+				<p className="font-semibold mb-1">
+					{row.name} {row.icon}
+				</p>
+				<p className="text-muted-foreground">
+					Total: ${row.totalAmount.toLocaleString()}
+				</p>
+			</div>
+		);
+	}
+	return null;
+};
+
+// MAIN COMPONENT
 export function CategorySpendingChart({
-  type,
-  timePeriod,
+	type,
+	timePeriod,
 }: CategorySpendingChartProps) {
-  const data = generateSpendingData(timePeriod);
+	const supabase = createClient();
+	const [data, setData] = useState<SpendingCategory[]>([]);
 
-  if (type === "pie") {
-    return (
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            outerRadius={80}
-            fill="#8884d8"
-            dataKey="value"
-            nameKey="name"
-            label={({ name, percent }) =>
-              `${name} ${(percent * 100).toFixed(0)}%`
-            }
-          >
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-          </Pie>
-          <Tooltip content={<CustomTooltip />} />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
-    );
-  }
+	useEffect(() => {
+		const load = async () => {
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
+			if (!user) return;
 
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart
-        data={data}
-        layout="vertical"
-        margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
-      >
-        <CartesianGrid
-          strokeDasharray="3 3"
-          horizontal={true}
-          vertical={false}
-        />
-        <XAxis type="number" />
-        <YAxis
-          type="category"
-          dataKey="name"
-          tick={{ fontSize: 12 }}
-          width={80}
-        />
-        <Tooltip content={<CustomTooltip />} />
-        <Bar dataKey="value" name={"name"}>
-          {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={entry.color} />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  );
+			const periodStart = getPeriodStart(timePeriod).toISOString();
+			const rows = await fetchSpendingRows(
+				supabase,
+				periodStart,
+				user.id
+			);
+			const stats = computeCategorySpending(rows);
+
+			setData(stats);
+		};
+
+		load();
+	}, [timePeriod]);
+
+	// PIE CHART
+	if (type === "pie") {
+		return (
+			<ResponsiveContainer width="100%" height="100%">
+				<PieChart>
+					<Pie
+						data={data}
+						cx="50%"
+						cy="50%"
+						outerRadius={80}
+						dataKey="totalAmount"
+						nameKey="name"
+						label={({ name, percent = 0 }) =>
+							`${name} ${(percent * 100).toFixed(0)}%`
+						}
+					>
+						{data.map((entry) => (
+							<Cell key={entry.id} fill={entry.color} />
+						))}
+					</Pie>
+
+					<Tooltip content={<CustomTooltip />} />
+					<Legend />
+				</PieChart>
+			</ResponsiveContainer>
+		);
+	}
+
+	// BAR CHART
+	return (
+		<ResponsiveContainer width="100%" height="100%">
+			<BarChart
+				data={data}
+				layout="vertical"
+				margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+			>
+				<CartesianGrid
+					strokeDasharray="3 3"
+					horizontal
+					vertical={false}
+				/>
+
+				<XAxis type="number" />
+				<YAxis
+					type="category"
+					dataKey="name"
+					width={120}
+					tickFormatter={(value) => {
+						const match = data.find((c) => c.name === value);
+						return `${value} ${match?.icon ?? ""}`;
+					}}
+				/>
+
+				<Tooltip content={<CustomTooltip />} />
+
+				<Bar dataKey="totalAmount" name="Total Spent">
+					{data.map((entry) => (
+						<Cell key={entry.id} fill={entry.color} />
+					))}
+				</Bar>
+			</BarChart>
+		</ResponsiveContainer>
+	);
 }

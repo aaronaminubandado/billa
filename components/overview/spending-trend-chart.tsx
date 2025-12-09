@@ -1,153 +1,263 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { createClient } from "@/utils/supabase/client";
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
+	LineChart,
+	Line,
+	XAxis,
+	YAxis,
+	CartesianGrid,
+	Tooltip,
+	Legend,
+	ResponsiveContainer,
 } from "recharts";
 
-// Sample categories with colors
-const categories = [
-  { id: 1, name: "Housing", color: "#22c55e" },
-  { id: 2, name: "Food", color: "#f97316" },
-  { id: 3, name: "Transportation", color: "#3b82f6" },
-  { id: 4, name: "Entertainment", color: "#a855f7" },
-];
+// -------------------------------
+// Types
+// -------------------------------
+interface Category {
+	id: string;
+	name: string;
+	color: string;
+	icon: string | null;
+}
 
-// sample spending trend data
-const generateSpendingTrendData = (timePeriod: string) => {
-  // In a real app, this would fetch data based on the time period
-  let dataPoints = [];
-  let labels = [];
+interface TransactionRow {
+	amount: number;
+	type: "expense" | "income";
+	created_at: string;
+	categories: Category | null;
+}
 
-  switch (timePeriod) {
-    case "week":
-      labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-      break;
-    case "month":
-      labels = ["Week 1", "Week 2", "Week 3", "Week 4"];
-      break;
-    case "quarter":
-      labels = ["Jan", "Feb", "Mar"];
-      break;
-    case "year":
-      labels = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ];
-      break;
-    default:
-      labels = ["Week 1", "Week 2", "Week 3", "Week 4"];
-  }
+interface SpendingPoint {
+	name: string;
+	[key: string]: number | string;
+}
 
-  // Base values for each category
-  const baseValues = {
-    Housing: 1200,
-    Food: 500,
-    Transportation: 300,
-    Entertainment: 200,
-  };
+// -------------------------------
+// Buckets
+// -------------------------------
+function normalize(d: Date) {
+	return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
 
-  // Generate data points
-  dataPoints = labels.map((label) => {
-     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const dataPoint: any = { name: label };
+function getBuckets(timePeriod: string) {
+	const now = new Date();
+	const buckets: { label: string; start: Date; end: Date }[] = [];
 
-    // Add data for each category with some randomness
-    categories.forEach((category) => {
-      const baseValue = baseValues[category.name as keyof typeof baseValues];
-      const randomFactor = 0.8 + Math.random() * 0.4; // Between 0.8 and 1.2
-      dataPoint[category.name] = Math.round(baseValue * randomFactor);
-    });
+	if (timePeriod === "week") {
+		for (let i = 6; i >= 0; i--) {
+			const day = new Date(now);
+			day.setDate(now.getDate() - i);
+			const start = normalize(day);
+			const end = new Date(start);
+			end.setHours(23, 59, 59, 999);
 
-    // Add total
-    dataPoint.Total = Object.keys(dataPoint)
-      .filter((key) => key !== "name")
-      .reduce((sum, key) => sum + dataPoint[key], 0);
+			buckets.push({
+				label: day.toLocaleDateString("en-US", { weekday: "short" }),
+				start,
+				end,
+			});
+		}
+	}
 
-    return dataPoint;
-  });
+	if (timePeriod === "month") {
+		const year = now.getFullYear();
+		const month = now.getMonth();
 
-  return dataPoints;
-};
+		for (let w = 0; w < 4; w++) {
+			const start = new Date(year, month, w * 7 + 1);
+			const end = new Date(year, month, w * 7 + 7, 23, 59, 59, 999);
+			buckets.push({ label: `Week ${w + 1}`, start, end });
+		}
+	}
 
-// Custom tooltip for the chart
- // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-background border rounded-md shadow-md p-3 text-sm">
-        <p className="font-medium mb-1">{label}</p>
-        { /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/}
-        {payload.map((entry: any, index: number) => (
-          <p
-            key={`item-${index}`}
-            style={{ color: entry.color }}
-            className="flex justify-between"
-          >
-            <span>{entry.name}: </span>
-            <span className="font-medium ml-2">
-              ${entry.value.toLocaleString()}
-            </span>
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
-};
+	if (timePeriod === "quarter") {
+		const year = now.getFullYear();
+		const currentMonth = now.getMonth();
+		const quarterStartMonth = currentMonth - (currentMonth % 3);
 
+		for (let i = 0; i < 3; i++) {
+			const m = quarterStartMonth + i;
+			const start = new Date(year, m, 1);
+			const end = new Date(year, m + 1, 0, 23, 59, 59, 999);
+			buckets.push({
+				label: start.toLocaleString("en-US", { month: "short" }),
+				start,
+				end,
+			});
+		}
+	}
+
+	if (timePeriod === "year") {
+		const year = now.getFullYear();
+		for (let m = 0; m < 12; m++) {
+			const start = new Date(year, m, 1);
+			const end = new Date(year, m + 1, 0, 23, 59, 59, 999);
+			buckets.push({
+				label: start.toLocaleString("en-US", { month: "short" }),
+				start,
+				end,
+			});
+		}
+	}
+
+	return buckets;
+}
+
+// -------------------------------
+// Supabase fetch
+// -------------------------------
+async function fetchTransactions(
+	supabase: ReturnType<typeof createClient>,
+	userId: string,
+	after: Date
+): Promise<TransactionRow[]> {
+	const { data, error } = await supabase
+		.from("transactions")
+		.select(
+			`
+      amount,
+      type,
+      created_at,
+      categories ( id, name, color, icon )
+    `
+		)
+		.gte("created_at", after.toISOString())
+		.eq("user_id", userId);
+
+	if (error) throw error;
+
+	return data.map((row: any) => ({
+		...row,
+		categories: row.categories ?? null,
+	}));
+}
+
+// -------------------------------
+// Component
+// -------------------------------
 interface SpendingTrendChartProps {
-  timePeriod: string;
+	timePeriod: string;
 }
 
 export function SpendingTrendChart({ timePeriod }: SpendingTrendChartProps) {
-  const data = generateSpendingTrendData(timePeriod);
+	const supabase = createClient();
+	const [chartType, setChartType] = useState<"expense" | "income">("expense");
+	const [chartData, setChartData] = useState<SpendingPoint[]>([]);
+	const [categoryList, setCategoryList] = useState<Category[]>([]);
 
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <LineChart
-        data={data}
-        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-      >
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="name" />
-        <YAxis />
-        <Tooltip content={<CustomTooltip />} />
-        <Legend />
-        <Line
-          type="monotone"
-          dataKey="Total"
-          stroke="#64748b"
-          strokeWidth={2}
-          activeDot={{ r: 8 }}
-        />
-        {categories.map((category) => (
-          <Line
-            key={category.id}
-            type="monotone"
-            dataKey={category.name}
-            stroke={category.color}
-            activeDot={{ r: 6 }}
-          />
-        ))}
-      </LineChart>
-    </ResponsiveContainer>
-  );
+	useEffect(() => {
+		const load = async () => {
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
+			if (!user) return;
+
+			const buckets = getBuckets(timePeriod);
+			const earliest = buckets[0].start;
+
+			const rows = await fetchTransactions(supabase, user.id, earliest);
+
+			// Filter based on toggle (income/expense)
+			const filteredRows = rows.filter((t) => t.type === chartType);
+
+			// Discover categories dynamically
+			const categoryMap: Record<string, Category> = {};
+			filteredRows.forEach((r) => {
+				if (r.categories) categoryMap[r.categories.id] = r.categories;
+			});
+			const categories = Object.values(categoryMap);
+			setCategoryList(categories);
+
+			// Base dataset
+			const result: SpendingPoint[] = buckets.map((b) => {
+				const point: SpendingPoint = { name: b.label };
+				categories.forEach((c) => (point[c.name] = 0));
+				point.Total = 0;
+				return point;
+			});
+
+			// Fill dataset
+			filteredRows.forEach((row) => {
+				const cat = row.categories;
+				if (!cat) return;
+
+				const date = new Date(row.created_at);
+
+				const bucketIndex = buckets.findIndex(
+					(b) => date >= b.start && date <= b.end
+				);
+
+				if (bucketIndex >= 0) {
+					result[bucketIndex][cat.name] =
+						Number(result[bucketIndex][cat.name]) + row.amount;
+
+					result[bucketIndex].Total =
+						Number(result[bucketIndex].Total) + row.amount;
+				}
+			});
+
+			setChartData(result);
+		};
+
+		load();
+	}, [timePeriod, chartType]);
+
+	return (
+		<div className="flex flex-col gap-3 w-full h-full">
+			{/* Toggle */}
+			{/* <div className="flex gap-2 mb-2">
+				<button
+					onClick={() => setChartType("expense")}
+					className={`px-3 py-1 rounded ${
+						chartType === "expense"
+							? "bg-blue-600 text-white"
+							: "bg-gray-200"
+					}`}
+				>
+					Expenses
+				</button>
+
+				<button
+					onClick={() => setChartType("income")}
+					className={`px-3 py-1 rounded ${
+						chartType === "income"
+							? "bg-blue-600 text-white"
+							: "bg-gray-200"
+					}`}
+				>
+					Income
+				</button>
+			</div> */}
+
+			<ResponsiveContainer width="100%" height="100%">
+				<LineChart data={chartData}>
+					<CartesianGrid strokeDasharray="3 3" />
+					<XAxis dataKey="name" />
+					<YAxis />
+					<Tooltip />
+					<Legend />
+
+					<Line
+						type="monotone"
+						dataKey="Total"
+						stroke="#64748b"
+						strokeWidth={2}
+					/>
+
+					{categoryList.map((cat) => (
+						<Line
+							key={cat.id}
+							type="monotone"
+							dataKey={cat.name}
+							stroke={cat.color}
+							strokeWidth={2}
+						/>
+					))}
+				</LineChart>
+			</ResponsiveContainer>
+		</div>
+	);
 }

@@ -1,191 +1,209 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  ArrowUpIcon,
-  ArrowDownIcon,
-  DollarSignIcon,
-  TrendingUpIcon,
-  TrendingDownIcon,
-  PiggyBankIcon,
+	ArrowUpIcon,
+	ArrowDownIcon,
+	DollarSignIcon,
+	TrendingUpIcon,
+	TrendingDownIcon,
+	PiggyBankIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// Sample data for metrics
-const getMetricsData = (timePeriod: string) => {
-  // In a real app, this would fetch data based on the time period
-  const baseData = {
-    totalIncome: 4850,
-    totalExpenses: 3275,
-    balance: 1575,
-    savingsRate: 32.5,
-    incomeChange: 5.2,
-    expensesChange: -2.8,
-    topExpenseCategory: "Housing",
-    topExpenseAmount: 1200,
-  };
-
-  // Adjust data based on time period for demo purposes
-  switch (timePeriod) {
-    case "week":
-      return {
-        ...baseData,
-        totalIncome: 1200,
-        totalExpenses: 850,
-        balance: 350,
-        savingsRate: 29.2,
-      };
-    case "month":
-      return baseData;
-    case "quarter":
-      return {
-        ...baseData,
-        totalIncome: 14500,
-        totalExpenses: 9800,
-        balance: 4700,
-        savingsRate: 32.4,
-      };
-    case "year":
-      return {
-        ...baseData,
-        totalIncome: 58200,
-        totalExpenses: 39300,
-        balance: 18900,
-        savingsRate: 32.5,
-      };
-    default:
-      return baseData;
-  }
-};
+import { createClient } from "@/utils/supabase/client";
 
 interface DashboardMetricsProps {
-  timePeriod: string;
+	timePeriod: string;
+}
+
+interface MetricsData {
+	totalIncome: number;
+	totalExpenses: number;
+	balance: number;
+	savingsRate: number;
+	topExpenseCategory: string;
+	topExpenseAmount: number;
+	incomeChange: number;
+	expensesChange: number;
 }
 
 export function DashboardMetrics({ timePeriod }: DashboardMetricsProps) {
-  const metrics = getMetricsData(timePeriod);
+	const supabase = createClient();
+	const [metrics, setMetrics] = useState<MetricsData | null>(null);
 
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* Income Metric */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-muted-foreground">
-                Total Income
-              </span>
-              <span className="text-2xl font-bold">
-                ${metrics.totalIncome.toLocaleString()}
-              </span>
-            </div>
-            <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-              <ArrowUpIcon className="h-6 w-6 text-green-600 dark:text-green-400" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center">
-            <span
-              className={cn(
-                "text-xs font-medium",
-                metrics.incomeChange >= 0
-                  ? "text-green-600 dark:text-green-400"
-                  : "text-red-600 dark:text-red-400"
-              )}
-            >
-              {metrics.incomeChange >= 0 ? (
-                <TrendingUpIcon className="inline h-3 w-3 mr-1" />
-              ) : (
-                <TrendingDownIcon className="inline h-3 w-3 mr-1" />
-              )}
-              {Math.abs(metrics.incomeChange)}% from previous period
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+	// Convert timePeriods → date ranges
+	const getDateRange = () => {
+		const now = new Date();
+		const start = new Date();
 
-      {/* Expenses Metric */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-muted-foreground">
-                Total Expenses
-              </span>
-              <span className="text-2xl font-bold">
-                ${metrics.totalExpenses.toLocaleString()}
-              </span>
-            </div>
-            <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-              <ArrowDownIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center">
-            <span
-              className={cn(
-                "text-xs font-medium",
-                metrics.expensesChange <= 0
-                  ? "text-green-600 dark:text-green-400"
-                  : "text-red-600 dark:text-red-400"
-              )}
-            >
-              {metrics.expensesChange <= 0 ? (
-                <TrendingDownIcon className="inline h-3 w-3 mr-1" />
-              ) : (
-                <TrendingUpIcon className="inline h-3 w-3 mr-1" />
-              )}
-              {Math.abs(metrics.expensesChange)}% from previous period
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+		switch (timePeriod) {
+			case "week":
+				start.setDate(now.getDate() - 7);
+				break;
+			case "month":
+				start.setMonth(now.getMonth() - 1);
+				break;
+			case "quarter":
+				start.setMonth(now.getMonth() - 3);
+				break;
+			case "year":
+				start.setFullYear(now.getFullYear() - 1);
+				break;
+			default:
+				start.setMonth(now.getMonth() - 1);
+		}
 
-      {/* Balance Metric */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-muted-foreground">
-                Net Balance
-              </span>
-              <span className="text-2xl font-bold">
-                ${metrics.balance.toLocaleString()}
-              </span>
-            </div>
-            <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-              <DollarSignIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center">
-            <span className="text-xs font-medium text-muted-foreground">
-              {metrics.balance >= 0 ? "Surplus" : "Deficit"} for this period
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+		return { start: start.toISOString(), end: now.toISOString() };
+	};
 
-      {/* Savings Rate Metric */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-muted-foreground">
-                Savings Rate
-              </span>
-              <span className="text-2xl font-bold">{metrics.savingsRate}%</span>
-            </div>
-            <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
-              <PiggyBankIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center">
-            <span className="text-xs font-medium text-muted-foreground">
-              Top expense: {metrics.topExpenseCategory} ($
-              {metrics.topExpenseAmount})
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+	const fetchMetrics = async () => {
+		const { start, end } = getDateRange();
+
+		// Fetch all transactions in the selected range
+		const { data: transactions, error } = await supabase
+			.from("transactions")
+			.select("amount, type, category_id, categories(name)")
+			.gte("created_at", start)
+			.lte("created_at", end);
+
+		if (error) {
+			console.error(error);
+			return;
+		}
+
+		let totalIncome = 0;
+		let totalExpenses = 0;
+
+		const categoryTotals: Record<string, number> = {};
+
+		transactions.forEach((t:any) => {
+			if (t.type === "income") {
+				totalIncome += t.amount;
+			} else if (t.type === "expense") {
+				totalExpenses += t.amount;
+
+				const catName = t.categories?.name ?? "Unknown";
+				categoryTotals[catName] =
+					(categoryTotals[catName] || 0) + t.amount;
+			}
+		});
+
+		const balance = totalIncome - totalExpenses;
+		const savingsRate =
+			totalIncome > 0 ? ((balance / totalIncome) * 100).toFixed(1) : 0;
+
+		// Get largest category
+		let topExpenseCategory = "None";
+		let topExpenseAmount = 0;
+
+		for (const [cat, amt] of Object.entries(categoryTotals)) {
+			if (amt > topExpenseAmount) {
+				topExpenseCategory = cat;
+				topExpenseAmount = amt;
+			}
+		}
+
+		// For now, set % change to 0 until we add previous period query
+		setMetrics({
+			totalIncome,
+			totalExpenses,
+			balance,
+			savingsRate: Number(savingsRate),
+			topExpenseCategory,
+			topExpenseAmount,
+			incomeChange: 0,
+			expensesChange: 0,
+		});
+	};
+
+	useEffect(() => {
+		fetchMetrics();
+	}, [timePeriod]);
+
+	if (!metrics) return <div>Loading...</div>;
+
+	return (
+		<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+			{/* Income Metric */}
+			<Card>
+				<CardContent className="p-6">
+					<div className="flex items-center justify-between">
+						<div className="flex flex-col">
+							<span className="text-sm font-medium text-muted-foreground">
+								Total Income
+							</span>
+							<span className="text-2xl font-bold">
+								${metrics.totalIncome.toLocaleString()}
+							</span>
+						</div>
+						<div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+							<ArrowUpIcon className="h-6 w-6 text-green-600 dark:text-green-400" />
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+
+			{/* Expenses Metric */}
+			<Card>
+				<CardContent className="p-6">
+					<div className="flex items-center justify-between">
+						<div className="flex flex-col">
+							<span className="text-sm font-medium text-muted-foreground">
+								Total Expenses
+							</span>
+							<span className="text-2xl font-bold">
+								${metrics.totalExpenses.toLocaleString()}
+							</span>
+						</div>
+						<div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+							<ArrowDownIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+
+			{/* Balance Metric */}
+			<Card>
+				<CardContent className="p-6">
+					<div className="flex items-center justify-between">
+						<div className="flex flex-col">
+							<span className="text-sm font-medium text-muted-foreground">
+								Net Balance
+							</span>
+							<span className="text-2xl font-bold">
+								${metrics.balance.toLocaleString()}
+							</span>
+						</div>
+						<div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+							<DollarSignIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+
+			{/* Savings Rate Metric */}
+			<Card>
+				<CardContent className="p-6">
+					<div className="flex items-center justify-between">
+						<div className="flex flex-col">
+							<span className="text-sm font-medium text-muted-foreground">
+								Savings Rate
+							</span>
+							<span className="text-2xl font-bold">
+								{metrics.savingsRate}%
+							</span>
+						</div>
+						<div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+							<PiggyBankIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+						</div>
+					</div>
+					<div className="mt-4 text-xs font-medium text-muted-foreground">
+						Top expense: {metrics.topExpenseCategory} ($
+						{metrics.topExpenseAmount})
+					</div>
+				</CardContent>
+			</Card>
+		</div>
+	);
 }

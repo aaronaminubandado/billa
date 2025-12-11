@@ -88,7 +88,7 @@ export function AddBudgetModal({
 		e.preventDefault();
 
 		if (!amount || !categoryId) {
-			alert("Please fill in all required fields");
+			toast.error("Please fill in all required fields");
 			return;
 		}
 
@@ -110,7 +110,7 @@ export function AddBudgetModal({
 			<DialogHeader>
 				<DialogTitle>Add Budget</DialogTitle>
 				<DialogDescription>
-					Create a new budget for a category
+					Create a new budget for a category.
 				</DialogDescription>
 			</DialogHeader>
 

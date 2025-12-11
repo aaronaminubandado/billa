@@ -94,15 +94,20 @@ export default function BudgetPage() {
 		// Prepare grouped budgets array
 		const grouped: BudgetData[] = [];
 
-		for (const budget of budgets) {
-			const cat = budget.category;
-
-			// Calculate used amount for this budget
-			const used = await getCategorySpending(
+		// Fetch all spending data in parallel
+		const spendingPromises = budgets.map((budget) =>
+			getCategorySpending(
 				budget.category_id,
 				budget.period,
 				budget.start_date
-			);
+			)
+		);
+		const spendingResults = await Promise.all(spendingPromises);
+
+		for (let i = 0; i < budgets.length; i++) {
+			const budget = budgets[i];
+			const cat = budget.category;
+			const used = spendingResults[i];
 
 			const budgetItem: Budget = {
 				id: budget.id,
@@ -134,7 +139,7 @@ export default function BudgetPage() {
 
 	useEffect(() => {
 		fetchBudgets();
-	}, [fetchBudgets]);
+	}, []);
 
 	// Add budget and refresh
 	const handleAddBudget = async (newBudget: NewBudgetInput) => {

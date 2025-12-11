@@ -66,7 +66,10 @@ const fetchSpendingRows = async (
 		.eq("type", "expense")
 		.eq("user_id", userId);
 
-	if (error) throw error;
+	if (error) {
+		console.error("Failed to fetch spending data:");
+		return [];
+	}
 
 	return (data ?? []).map((row: any) => ({
 		...row,
@@ -154,11 +157,12 @@ export function CategorySpendingChart({
 	const [data, setData] = useState<SpendingCategory[]>([]);
 
 	useEffect(() => {
+		let cancelled = false;
 		const load = async () => {
 			const {
 				data: { user },
 			} = await supabase.auth.getUser();
-			if (!user) return;
+			if (!user || cancelled) return;
 
 			const periodStart = getPeriodStart(timePeriod).toISOString();
 			const rows = await fetchSpendingRows(
@@ -166,13 +170,17 @@ export function CategorySpendingChart({
 				periodStart,
 				user.id
 			);
+			if (cancelled) return;
 			const stats = computeCategorySpending(rows);
 
 			setData(stats);
 		};
 
 		load();
-	}, [timePeriod]);
+		return () => {
+			cancelled = true;
+		};
+	}, [timePeriod, supabase]);
 
 	// PIE CHART
 	if (type === "pie") {

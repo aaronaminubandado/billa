@@ -65,10 +65,14 @@ function getBuckets(timePeriod: string) {
 	if (timePeriod === "month") {
 		const year = now.getFullYear();
 		const month = now.getMonth();
+		const daysInMonth = new Date(year, month + 1, 0).getDate();
+		const weeksInMonth = Math.ceil(daysInMonth / 7);
 
-		for (let w = 0; w < 4; w++) {
-			const start = new Date(year, month, w * 7 + 1);
-			const end = new Date(year, month, w * 7 + 7, 23, 59, 59, 999);
+		for (let w = 0; w < weeksInMonth; w++) {
+			const startDay = w * 7 + 1;
+			const endDay = Math.min((w + 1) * 7, daysInMonth);
+			const start = new Date(year, month, startDay);
+			const end = new Date(year, month, endDay, 23, 59, 59, 999);
 			buckets.push({ label: `Week ${w + 1}`, start, end });
 		}
 	}
@@ -150,56 +154,65 @@ export function SpendingTrendChart({ timePeriod }: SpendingTrendChartProps) {
 
 	useEffect(() => {
 		const load = async () => {
-			const {
-				data: { user },
-			} = await supabase.auth.getUser();
-			if (!user) return;
+			try {
+				const {
+					data: { user },
+				} = await supabase.auth.getUser();
+				if (!user) return;
 
-			const buckets = getBuckets(timePeriod);
-			const earliest = buckets[0].start;
+				const buckets = getBuckets(timePeriod);
+				const earliest = buckets[0].start;
 
-			const rows = await fetchTransactions(supabase, user.id, earliest);
-
-			// Filter based on toggle (income/expense)
-			const filteredRows = rows.filter((t) => t.type === chartType);
-
-			// Discover categories dynamically
-			const categoryMap: Record<string, Category> = {};
-			filteredRows.forEach((r) => {
-				if (r.categories) categoryMap[r.categories.id] = r.categories;
-			});
-			const categories = Object.values(categoryMap);
-			setCategoryList(categories);
-
-			// Base dataset
-			const result: SpendingPoint[] = buckets.map((b) => {
-				const point: SpendingPoint = { name: b.label };
-				categories.forEach((c) => (point[c.name] = 0));
-				point.Total = 0;
-				return point;
-			});
-
-			// Fill dataset
-			filteredRows.forEach((row) => {
-				const cat = row.categories;
-				if (!cat) return;
-
-				const date = new Date(row.created_at);
-
-				const bucketIndex = buckets.findIndex(
-					(b) => date >= b.start && date <= b.end
+				const rows = await fetchTransactions(
+					supabase,
+					user.id,
+					earliest
 				);
 
-				if (bucketIndex >= 0) {
-					result[bucketIndex][cat.name] =
-						Number(result[bucketIndex][cat.name]) + row.amount;
+				// Filter based on toggle (income/expense)
+				const filteredRows = rows.filter((t) => t.type === chartType);
 
-					result[bucketIndex].Total =
-						Number(result[bucketIndex].Total) + row.amount;
-				}
-			});
+				// Discover categories dynamically
+				const categoryMap: Record<string, Category> = {};
+				filteredRows.forEach((r) => {
+					if (r.categories)
+						categoryMap[r.categories.id] = r.categories;
+				});
+				const categories = Object.values(categoryMap);
+				setCategoryList(categories);
 
-			setChartData(result);
+				// Base dataset
+				const result: SpendingPoint[] = buckets.map((b) => {
+					const point: SpendingPoint = { name: b.label };
+					categories.forEach((c) => (point[c.name] = 0));
+					point.Total = 0;
+					return point;
+				});
+
+				// Fill dataset
+				filteredRows.forEach((row) => {
+					const cat = row.categories;
+					if (!cat) return;
+
+					const date = new Date(row.created_at);
+
+					const bucketIndex = buckets.findIndex(
+						(b) => date >= b.start && date <= b.end
+					);
+
+					if (bucketIndex >= 0) {
+						result[bucketIndex][cat.name] =
+							Number(result[bucketIndex][cat.name]) + row.amount;
+
+						result[bucketIndex].Total =
+							Number(result[bucketIndex].Total) + row.amount;
+					}
+				});
+
+				setChartData(result);
+			} catch (error) {
+				console.error("Error");
+			}
 		};
 
 		load();

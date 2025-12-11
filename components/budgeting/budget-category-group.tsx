@@ -36,13 +36,6 @@ export function BudgetCategoryGroup({
 	const percentageUsed =
 		totalBudgeted > 0 ? (totalUsed / totalBudgeted) * 100 : 0;
 
-	// Determine progress color
-	const progressColor =
-		percentageUsed > 100
-			? "bg-red-600"
-			: percentageUsed > 90
-			? "bg-yellow-500"
-			: "bg-green-600";
 
 	return (
 		<Card>

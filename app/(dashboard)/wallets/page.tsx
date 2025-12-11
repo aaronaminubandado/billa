@@ -88,6 +88,7 @@ export default function WalletsPage() {
 
 		if (error) {
 			toast.error("An error occurred. Try again later");
+            return;
 		} else {
 			toast.success("Wallet deleted successfully!");
 		}

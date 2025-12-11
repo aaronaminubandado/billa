@@ -100,7 +100,6 @@ export function EditWalletModal({
 		const updatedWallet = {
 			...wallet,
 			name,
-			balance: parseFloat(balance) || 0,
 			type,
 			currency,
 			icon: getIconForType(type),
@@ -108,7 +107,6 @@ export function EditWalletModal({
 
 		onUpdate(updatedWallet);
 	};
-
 	return (
 		<Dialog open={isOpen} onOpenChange={onClose}>
 			<DialogContent

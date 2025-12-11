@@ -77,7 +77,7 @@ export function DashboardMetrics({ timePeriod }: DashboardMetricsProps) {
 
 		const categoryTotals: Record<string, number> = {};
 
-		transactions.forEach((t:any) => {
+		transactions.forEach((t: any) => {
 			if (t.type === "income") {
 				totalIncome += t.amount;
 			} else if (t.type === "expense") {
@@ -118,7 +118,19 @@ export function DashboardMetrics({ timePeriod }: DashboardMetricsProps) {
 	};
 
 	useEffect(() => {
-		fetchMetrics();
+		let isCurrent = true;
+
+		const load = async () => {
+			const result = await fetchMetrics();
+			if (isCurrent && result) {
+				setMetrics(result);
+			}
+		};
+		load();
+
+		return () => {
+			isCurrent = false;
+		};
 	}, [timePeriod]);
 
 	if (!metrics) return <div>Loading...</div>;
@@ -200,7 +212,7 @@ export function DashboardMetrics({ timePeriod }: DashboardMetricsProps) {
 					</div>
 					<div className="mt-4 text-xs font-medium text-muted-foreground">
 						Top expense: {metrics.topExpenseCategory} ($
-						{metrics.topExpenseAmount})
+						{metrics.topExpenseAmount.toLocaleString()})
 					</div>
 				</CardContent>
 			</Card>

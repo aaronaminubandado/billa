@@ -13,7 +13,6 @@ import {
 	ResponsiveContainer,
 } from "recharts";
 
-
 interface Transaction {
 	id: string;
 	amount: number;
@@ -22,7 +21,7 @@ interface Transaction {
 }
 
 interface ChartPoint {
-	name: string; 
+	name: string;
 	income: number;
 	expenses: number;
 	balance: number;
@@ -31,7 +30,6 @@ interface ChartPoint {
 interface IncomeVsExpensesChartProps {
 	timePeriod: string;
 }
-
 
 const getLabelsForPeriod = (timePeriod: string): string[] => {
 	switch (timePeriod) {
@@ -65,42 +63,69 @@ const getLabelsForPeriod = (timePeriod: string): string[] => {
 	}
 };
 
-
-// START DATE BASED ON PERIOD
 const getPeriodStart = (period: string): Date => {
 	const now = new Date();
 	const copy = new Date(now);
 
 	switch (period) {
-		case "week":
-			copy.setDate(now.getDate() - 7);
+		case "week": {
+			// Start of the current week (Monday)
+			const day = now.getDay(); // Sunday=0
+			const mondayOffset = day === 0 ? -6 : 1 - day;
+			copy.setDate(now.getDate() + mondayOffset);
 			break;
+		}
 
-		case "month":
-			copy.setMonth(now.getMonth() - 1);
+		case "month": {
+			copy.setDate(1); // first day of month
 			break;
+		}
 
-		case "quarter":
-			copy.setMonth(now.getMonth() - 3);
+		case "quarter": {
+			const currentMonth = now.getMonth(); // 0–11
+			const quarterStartMonth = currentMonth - (currentMonth % 3);
+			copy.setMonth(quarterStartMonth, 1);
 			break;
+		}
 
-		case "year":
-			copy.setFullYear(now.getFullYear() - 1);
+		case "year": {
+			copy.setMonth(0, 1); // Jan 1
 			break;
+		}
 
 		default:
-			copy.setMonth(now.getMonth() - 1);
+			copy.setDate(1);
 	}
 
+	copy.setHours(0, 0, 0, 0);
 	return copy;
 };
 
+const getWeekBucket = (date: Date, weekStart: Date): number => {
+	const diffDays = Math.floor(
+		(date.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24)
+	);
+	return Math.min(Math.max(diffDays, 0), 6); // clamp 0–6
+};
+
+const getMonthBucket = (date: Date): number => {
+	const day = date.getDate();
+	return Math.min(Math.floor((day - 1) / 7), 3); // 0–3
+};
+
+const getQuarterBucket = (date: Date): number => {
+	const month = date.getMonth() % 3;
+	return month; // maps 0–2 correctly
+};
+
+const getYearBucket = (date: Date): number => date.getMonth();
 
 // GROUP TRANSACTIONS BY PERIOD BUCKET
 const groupTransactions = (
 	rows: Transaction[],
 	labels: string[],
-	period: string
+	period: string,
+	startOfPeriod: Date
 ): ChartPoint[] => {
 	const buckets = labels.map(() => ({
 		income: 0,
@@ -108,30 +133,28 @@ const groupTransactions = (
 		balance: 0,
 	}));
 
-	const getBucketIndex = (date: Date): number => {
+	const getBucketIndex = (
+		date: Date,
+		period: string,
+		startOfPeriod: Date
+	): number => {
 		switch (period) {
 			case "week":
-				return date.getDay() === 0 ? 6 : date.getDay() - 1; // Make Monday index 0
-
-			case "month": {
-				const day = date.getDate();
-				return Math.min(3, Math.floor((day - 1) / 7));
-			}
-
+				return getWeekBucket(date, startOfPeriod);
+			case "month":
+				return getMonthBucket(date);
 			case "quarter":
-				return date.getMonth() % 3;
-
+				return getQuarterBucket(date);
 			case "year":
-				return date.getMonth();
-
+				return getYearBucket(date);
 			default:
-				return 0;
+				return getMonthBucket(date);
 		}
 	};
 
 	rows.forEach((t) => {
 		const date = new Date(t.created_at);
-		const index = getBucketIndex(date);
+		const index = getBucketIndex(date, period, startOfPeriod);
 
 		if (!buckets[index]) return;
 
@@ -187,7 +210,6 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 	return null;
 };
 
-
 // MAIN COMPONENT
 export function IncomeVsExpensesChart({
 	timePeriod,
@@ -217,7 +239,12 @@ export function IncomeVsExpensesChart({
 			}
 
 			const labels = getLabelsForPeriod(timePeriod);
-			const grouped = groupTransactions(rows ?? [], labels, timePeriod);
+			const grouped = groupTransactions(
+				rows ?? [],
+				labels,
+				timePeriod,
+				getPeriodStart(timePeriod)
+			);
 
 			setData(grouped);
 		};
@@ -225,7 +252,6 @@ export function IncomeVsExpensesChart({
 		load();
 	}, [timePeriod]);
 
-	
 	// RENDER CHART
 	return (
 		<ResponsiveContainer width="100%" height="100%">

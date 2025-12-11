@@ -165,31 +165,43 @@ interface MostUsedCategoriesChartProps {
 	timePeriod: string;
 }
 
+const supabase = createClient();
+
 export function MostUsedCategoriesChart({
 	timePeriod,
 }: MostUsedCategoriesChartProps) {
-	const supabase = createClient();
 	const [chartData, setChartData] = useState<CategoryStat[]>([]);
 
 	useEffect(() => {
+		let cancelled = false;
+
 		const load = async () => {
-			const {
-				data: { user },
-			} = await supabase.auth.getUser();
-			if (!user) return;
+			try {
+				const {
+					data: { user },
+				} = await supabase.auth.getUser();
+				if (!user || cancelled) return;
 
-			const periodStart = getPeriodStart(timePeriod).toISOString();
-			const rows = await fetchCategoryStats(
-				supabase,
-				periodStart,
-				user.id
-			);
-			const stats = computeCategoryStats(rows);
+				const periodStart = getPeriodStart(timePeriod).toISOString();
+				const rows = await fetchCategoryStats(
+					supabase,
+					periodStart,
+					user.id
+				);
+				if (cancelled) return;
 
-			setChartData(stats);
+				const stats = computeCategoryStats(rows);
+				setChartData(stats);
+			} catch (error) {
+				console.error("Failed to load category stats:", error);
+			}
 		};
 
 		load();
+
+		return () => {
+			cancelled = true;
+		};
 	}, [timePeriod]);
 
 	return (

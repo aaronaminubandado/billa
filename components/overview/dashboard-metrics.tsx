@@ -6,12 +6,14 @@ import {
 	ArrowUpIcon,
 	ArrowDownIcon,
 	DollarSignIcon,
+	PiggyBankIcon,
 	TrendingUpIcon,
 	TrendingDownIcon,
-	PiggyBankIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatCurrency, getDateRange } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface DashboardMetricsProps {
 	timePeriod: string;
@@ -31,50 +33,31 @@ interface MetricsData {
 export function DashboardMetrics({ timePeriod }: DashboardMetricsProps) {
 	const supabase = createClient();
 	const [metrics, setMetrics] = useState<MetricsData | null>(null);
-
-	// Convert timePeriods → date ranges
-	const getDateRange = () => {
-		const now = new Date();
-		const start = new Date();
-
-		switch (timePeriod) {
-			case "week":
-				start.setDate(now.getDate() - 7);
-				break;
-			case "month":
-				start.setMonth(now.getMonth() - 1);
-				break;
-			case "quarter":
-				start.setMonth(now.getMonth() - 3);
-				break;
-			case "year":
-				start.setFullYear(now.getFullYear() - 1);
-				break;
-			default:
-				start.setMonth(now.getMonth() - 1);
-		}
-
-		return { start: start.toISOString(), end: now.toISOString() };
-	};
+	const [loading, setLoading] = useState(true);
 
 	const fetchMetrics = async () => {
-		const { start, end } = getDateRange();
+		const {
+			data: { user },
+		} = await supabase.auth.getUser();
+		if (!user) return;
 
-		// Fetch all transactions in the selected range
+		const { start, end } = getDateRange(timePeriod);
+
 		const { data: transactions, error } = await supabase
 			.from("transactions")
 			.select("amount, type, category_id, categories(name)")
+			.eq("user_id", user.id)
 			.gte("created_at", start)
 			.lte("created_at", end);
 
 		if (error) {
 			console.error(error);
+			setLoading(false);
 			return;
 		}
 
 		let totalIncome = 0;
 		let totalExpenses = 0;
-
 		const categoryTotals: Record<string, number> = {};
 
 		transactions.forEach((t: any) => {
@@ -82,21 +65,17 @@ export function DashboardMetrics({ timePeriod }: DashboardMetricsProps) {
 				totalIncome += t.amount;
 			} else if (t.type === "expense") {
 				totalExpenses += t.amount;
-
 				const catName = t.categories?.name ?? "Unknown";
-				categoryTotals[catName] =
-					(categoryTotals[catName] || 0) + t.amount;
+				categoryTotals[catName] = (categoryTotals[catName] || 0) + t.amount;
 			}
 		});
 
 		const balance = totalIncome - totalExpenses;
 		const savingsRate =
-			totalIncome > 0 ? ((balance / totalIncome) * 100).toFixed(1) : 0;
+			totalIncome > 0 ? Number(((balance / totalIncome) * 100).toFixed(1)) : 0;
 
-		// Get largest category
 		let topExpenseCategory = "None";
 		let topExpenseAmount = 0;
-
 		for (const [cat, amt] of Object.entries(categoryTotals)) {
 			if (amt > topExpenseAmount) {
 				topExpenseCategory = cat;
@@ -104,118 +83,138 @@ export function DashboardMetrics({ timePeriod }: DashboardMetricsProps) {
 			}
 		}
 
-		// For now, set % change to 0 until we add previous period query
 		setMetrics({
 			totalIncome,
 			totalExpenses,
 			balance,
-			savingsRate: Number(savingsRate),
+			savingsRate,
 			topExpenseCategory,
 			topExpenseAmount,
 			incomeChange: 0,
 			expensesChange: 0,
 		});
+		setLoading(false);
 	};
 
 	useEffect(() => {
+		setLoading(true);
 		let isCurrent = true;
-
 		const load = async () => {
-			const result = await fetchMetrics();
-			if (isCurrent && result) {
-				setMetrics(result);
-			}
+			if (isCurrent) await fetchMetrics();
 		};
 		load();
-
 		return () => {
 			isCurrent = false;
 		};
 	}, [timePeriod]);
 
-	if (!metrics) return <div>Loading...</div>;
+	if (loading) {
+		return (
+			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+				{[...Array(4)].map((_, i) => (
+					<Card key={i} className="overflow-hidden">
+						<CardContent className="p-5">
+							<div className="flex items-center justify-between">
+								<div className="space-y-2 flex-1">
+									<Skeleton className="h-3.5 w-24" />
+									<Skeleton className="h-7 w-32" />
+								</div>
+								<Skeleton className="h-11 w-11 rounded-xl" />
+							</div>
+						</CardContent>
+					</Card>
+				))}
+			</div>
+		);
+	}
+
+	if (!metrics) {
+		return (
+			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+				{[...Array(4)].map((_, i) => (
+					<Card key={i}>
+						<CardContent className="p-5 text-center text-muted-foreground text-sm">
+							No data available
+						</CardContent>
+					</Card>
+				))}
+			</div>
+		);
+	}
+
+	const metricCards = [
+		{
+			label: "Total Income",
+			value: formatCurrency(metrics.totalIncome),
+			icon: ArrowUpIcon,
+			color: "text-emerald-600 dark:text-emerald-400",
+			bg: "bg-emerald-100 dark:bg-emerald-500/10",
+			trend: metrics.incomeChange,
+		},
+		{
+			label: "Total Expenses",
+			value: formatCurrency(metrics.totalExpenses),
+			icon: ArrowDownIcon,
+			color: "text-rose-600 dark:text-rose-400",
+			bg: "bg-rose-100 dark:bg-rose-500/10",
+			trend: metrics.expensesChange,
+		},
+		{
+			label: "Net Balance",
+			value: formatCurrency(metrics.balance),
+			icon: DollarSignIcon,
+			color: "text-blue-600 dark:text-blue-400",
+			bg: "bg-blue-100 dark:bg-blue-500/10",
+			trend: null,
+		},
+		{
+			label: "Savings Rate",
+			value: `${metrics.savingsRate}%`,
+			icon: PiggyBankIcon,
+			color: "text-violet-600 dark:text-violet-400",
+			bg: "bg-violet-100 dark:bg-violet-500/10",
+			subtitle: `Top: ${metrics.topExpenseCategory} (${formatCurrency(metrics.topExpenseAmount)})`,
+		},
+	];
 
 	return (
-		<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-			{/* Income Metric */}
-			<Card>
-				<CardContent className="p-6">
-					<div className="flex items-center justify-between">
-						<div className="flex flex-col">
-							<span className="text-sm font-medium text-muted-foreground">
-								Total Income
-							</span>
-							<span className="text-2xl font-bold">
-								${metrics.totalIncome.toLocaleString()}
-							</span>
-						</div>
-						<div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-							<ArrowUpIcon className="h-6 w-6 text-green-600 dark:text-green-400" />
-						</div>
-					</div>
-				</CardContent>
-			</Card>
-
-			{/* Expenses Metric */}
-			<Card>
-				<CardContent className="p-6">
-					<div className="flex items-center justify-between">
-						<div className="flex flex-col">
-							<span className="text-sm font-medium text-muted-foreground">
-								Total Expenses
-							</span>
-							<span className="text-2xl font-bold">
-								${metrics.totalExpenses.toLocaleString()}
-							</span>
-						</div>
-						<div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-							<ArrowDownIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
-						</div>
-					</div>
-				</CardContent>
-			</Card>
-
-			{/* Balance Metric */}
-			<Card>
-				<CardContent className="p-6">
-					<div className="flex items-center justify-between">
-						<div className="flex flex-col">
-							<span className="text-sm font-medium text-muted-foreground">
-								Net Balance
-							</span>
-							<span className="text-2xl font-bold">
-								${metrics.balance.toLocaleString()}
-							</span>
-						</div>
-						<div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-							<DollarSignIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-						</div>
-					</div>
-				</CardContent>
-			</Card>
-
-			{/* Savings Rate Metric */}
-			<Card>
-				<CardContent className="p-6">
-					<div className="flex items-center justify-between">
-						<div className="flex flex-col">
-							<span className="text-sm font-medium text-muted-foreground">
-								Savings Rate
-							</span>
-							<span className="text-2xl font-bold">
-								{metrics.savingsRate}%
-							</span>
-						</div>
-						<div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
-							<PiggyBankIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-						</div>
-					</div>
-					<div className="mt-4 text-xs font-medium text-muted-foreground">
-						Top expense: {metrics.topExpenseCategory} ($
-						{metrics.topExpenseAmount.toLocaleString()})
-					</div>
-				</CardContent>
-			</Card>
+		<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 min-w-0">
+			{metricCards.map((card, idx) => {
+				const Icon = card.icon;
+				return (
+					<Card
+						key={idx}
+						className="overflow-hidden transition-all duration-200 hover:shadow-md animate-slide-up"
+						style={{ animationDelay: `${idx * 80}ms`, animationFillMode: "both" }}
+					>
+						<CardContent className="p-5">
+							<div className="flex items-center justify-between">
+								<div className="space-y-1.5 min-w-0">
+									<p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+										{card.label}
+									</p>
+									<p className="text-2xl font-bold tracking-tight">
+										{card.value}
+									</p>
+								</div>
+								<div
+									className={cn(
+										"h-11 w-11 rounded-xl flex items-center justify-center flex-shrink-0",
+										card.bg
+									)}
+								>
+									<Icon className={cn("h-5 w-5", card.color)} />
+								</div>
+							</div>
+							{"subtitle" in card && card.subtitle && (
+								<p className="mt-2.5 text-xs text-muted-foreground truncate">
+									{card.subtitle}
+								</p>
+							)}
+						</CardContent>
+					</Card>
+				);
+			})}
 		</div>
 	);
 }

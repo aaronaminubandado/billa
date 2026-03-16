@@ -4,12 +4,14 @@ import Overview from "@/components/overview/Overview";
 
 export default function DashboardPage() {
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Overview</h1>
-        <p className="text-muted-foreground">Your financial summary at a glance</p>
+    <div className="space-y-1">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-sm text-muted-foreground">
+          Your financial overview at a glance
+        </p>
       </div>
-      
+
       <Overview />
     </div>
   );

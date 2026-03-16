@@ -20,7 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  SettingsIcon,
+  SlidersHorizontalIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from "lucide-react";
 import { CategorySpendingChart } from "@/components/overview/category-spending-chart";
 import { IncomeVsExpensesChart } from "@/components/overview/income-vs-expenses-chart";
@@ -29,7 +31,6 @@ import { MostUsedCategoriesChart } from "@/components/overview/most-used-categor
 import { DashboardMetrics } from "@/components/overview/dashboard-metrics";
 
 export default function Overview() {
-  // State for chart visibility toggles
   const [visibleCharts, setVisibleCharts] = useState({
     categorySpending: true,
     incomeVsExpenses: true,
@@ -37,10 +38,9 @@ export default function Overview() {
     mostUsedCategories: true,
   });
 
-  // State for time period filter
   const [timePeriod, setTimePeriod] = useState("month");
+  const [showWidgetSettings, setShowWidgetSettings] = useState(false);
 
-  // Toggle chart visibility
   const toggleChart = (chartName: keyof typeof visibleCharts) => {
     setVisibleCharts((prev) => ({
       ...prev,
@@ -49,12 +49,12 @@ export default function Overview() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto min-w-0">
           <Select value={timePeriod} onValueChange={setTimePeriod}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select time period" />
+            <SelectTrigger className="w-full min-w-0 sm:w-[160px] h-9 text-sm">
+              <SelectValue placeholder="Time period" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="week">This Week</SelectItem>
@@ -64,87 +64,70 @@ export default function Overview() {
             </SelectContent>
           </Select>
 
-          <Button variant="outline" size="icon">
-            <SettingsIcon className="h-4 w-4" />
-            <span className="sr-only">Dashboard settings</span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-2"
+            onClick={() => setShowWidgetSettings(!showWidgetSettings)}
+          >
+            <SlidersHorizontalIcon className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Widgets</span>
+            {showWidgetSettings ? (
+              <ChevronUpIcon className="h-3 w-3" />
+            ) : (
+              <ChevronDownIcon className="h-3 w-3" />
+            )}
           </Button>
         </div>
       </div>
 
-      {/* Dashboard Metrics */}
       <DashboardMetrics timePeriod={timePeriod} />
 
-      {/* Chart visibility toggles */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle>Dashboard Widgets</CardTitle>
-          <CardDescription>
-            Toggle widgets to customize your dashboard view
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="category-spending"
-                checked={visibleCharts.categorySpending}
-                onCheckedChange={() => toggleChart("categorySpending")}
-              />
-              <Label htmlFor="category-spending">Category Spending</Label>
+      {showWidgetSettings && (
+        <Card className="animate-slide-up">
+          <CardContent className="py-4 px-5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[
+                { id: "categorySpending" as const, label: "Category Spending" },
+                { id: "incomeVsExpenses" as const, label: "Income vs Expenses" },
+                { id: "spendingTrend" as const, label: "Spending Trend" },
+                { id: "mostUsedCategories" as const, label: "Top Categories" },
+              ].map((widget) => (
+                <div key={widget.id} className="flex items-center space-x-2">
+                  <Switch
+                    id={widget.id}
+                    checked={visibleCharts[widget.id]}
+                    onCheckedChange={() => toggleChart(widget.id)}
+                  />
+                  <Label htmlFor={widget.id} className="text-xs font-medium cursor-pointer">
+                    {widget.label}
+                  </Label>
+                </div>
+              ))}
             </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="income-vs-expenses"
-                checked={visibleCharts.incomeVsExpenses}
-                onCheckedChange={() => toggleChart("incomeVsExpenses")}
-              />
-              <Label htmlFor="income-vs-expenses">Income vs Expenses</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="spending-trend"
-                checked={visibleCharts.spendingTrend}
-                onCheckedChange={() => toggleChart("spendingTrend")}
-              />
-              <Label htmlFor="spending-trend">Spending Trend</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="most-used-categories"
-                checked={visibleCharts.mostUsedCategories}
-                onCheckedChange={() => toggleChart("mostUsedCategories")}
-              />
-              <Label htmlFor="most-used-categories">Most Used Categories</Label>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground mt-4">
-            {/* TODO comment for drag-and-drop functionality */}
-            {/* // TODO: Implement drag-and-drop functionality to reorder dashboard widgets */}
-            Drag and drop functionality for reordering widgets coming soon.
-          </p>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Charts grid with conditional rendering based on visibility toggles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {visibleCharts.categorySpending && (
-          <Card className="col-span-1 md:col-span-1">
-            <CardHeader>
-              <CardTitle>Monthly Spending by Category</CardTitle>
-              <CardDescription>
-                Breakdown of your expenses across different categories
+          <Card className="animate-slide-up overflow-hidden">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">Spending by Category</CardTitle>
+              <CardDescription className="text-xs">
+                Breakdown of expenses across categories
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <Tabs defaultValue="pie" className="w-full">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="pie">Pie Chart</TabsTrigger>
-                  <TabsTrigger value="bar">Bar Chart</TabsTrigger>
+                <TabsList className="h-8 mb-3">
+                  <TabsTrigger value="pie" className="text-xs px-3 h-6">Pie</TabsTrigger>
+                  <TabsTrigger value="bar" className="text-xs px-3 h-6">Bar</TabsTrigger>
                 </TabsList>
-                <TabsContent value="pie" className="h-[300px]">
+                <TabsContent value="pie" className="h-[280px]">
                   <CategorySpendingChart type="pie" timePeriod={timePeriod} />
                 </TabsContent>
-                <TabsContent value="bar" className="h-[300px]">
+                <TabsContent value="bar" className="h-[280px]">
                   <CategorySpendingChart type="bar" timePeriod={timePeriod} />
                 </TabsContent>
               </Tabs>
@@ -153,15 +136,15 @@ export default function Overview() {
         )}
 
         {visibleCharts.incomeVsExpenses && (
-          <Card className="col-span-1 md:col-span-1">
-            <CardHeader>
-              <CardTitle>Income vs Expenses</CardTitle>
-              <CardDescription>
-                Comparison of your income and expenses over time
+          <Card className="animate-slide-up overflow-hidden" style={{ animationDelay: "100ms" }}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">Income vs Expenses</CardTitle>
+              <CardDescription className="text-xs">
+                Income and expense comparison over time
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
+            <CardContent className="pt-0">
+              <div className="h-[320px]">
                 <IncomeVsExpensesChart timePeriod={timePeriod} />
               </div>
             </CardContent>
@@ -169,14 +152,14 @@ export default function Overview() {
         )}
 
         {visibleCharts.spendingTrend && (
-          <Card className="col-span-1 md:col-span-2">
-            <CardHeader>
-              <CardTitle>Spending Trend</CardTitle>
-              <CardDescription>
-                Track how your spending has changed over time
+          <Card className="lg:col-span-2 animate-slide-up overflow-hidden" style={{ animationDelay: "200ms" }}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">Spending Trend</CardTitle>
+              <CardDescription className="text-xs">
+                Track how your spending changes over time
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <div className="h-[300px]">
                 <SpendingTrendChart timePeriod={timePeriod} />
               </div>
@@ -185,14 +168,14 @@ export default function Overview() {
         )}
 
         {visibleCharts.mostUsedCategories && (
-          <Card className="col-span-1 md:col-span-2">
-            <CardHeader>
-              <CardTitle>Most Used Categories</CardTitle>
-              <CardDescription>
+          <Card className="lg:col-span-2 animate-slide-up overflow-hidden" style={{ animationDelay: "300ms" }}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">Most Used Categories</CardTitle>
+              <CardDescription className="text-xs">
                 Your most frequently used spending categories
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <div className="h-[300px]">
                 <MostUsedCategoriesChart timePeriod={timePeriod} />
               </div>

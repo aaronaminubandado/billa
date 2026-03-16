@@ -11,7 +11,7 @@ export async function middleware(request: NextRequest) {
       error,
     } = await supabase.auth.getUser();
 
-    const authRoutes = ["/login", "/register", "forgot-password"].includes(
+    const authRoutes = ["/login", "/register", "/forgot-password"].includes(
       request.nextUrl.pathname
     );
 

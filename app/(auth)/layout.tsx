@@ -1,13 +1,13 @@
-import React from 'react'
+import React from "react";
 
 export default function AuthLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted">
       {children}
     </div>
-  )
+  );
 }

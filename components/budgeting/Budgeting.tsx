@@ -170,13 +170,6 @@ export default function BudgetPage() {
 		}
 
 		toast.success("Budget added successfully!");
-
-		if (error) {
-			toast.error("Failed to add budget.");
-			console.error(error);
-			return;
-		}
-
 		setIsAddModalOpen(false);
 		await fetchBudgets();
 	};
@@ -396,9 +389,9 @@ export default function BudgetPage() {
 										Overall Progress
 									</span>
 									<span className="font-medium">
-										{Math.round(
-											(totalUsed / totalBudgeted) * 100
-										)}
+										{totalBudgeted > 0
+											? Math.round((totalUsed / totalBudgeted) * 100)
+											: 0}
 										%
 									</span>
 								</div>
@@ -428,17 +421,17 @@ export default function BudgetPage() {
 			</div>
 
 			{/* Search and filter section */}
-			<div className="flex items-center space-x-2">
-				<div className="relative flex-1">
+			<div className="flex flex-col sm:flex-row gap-2 sm:gap-2 sm:items-center min-w-0">
+				<div className="relative flex-1 w-full min-w-0">
 					<SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
 					<Input
 						placeholder="Search budgets..."
-						className="pl-8"
+						className="pl-8 w-full min-w-0"
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
 					/>
 				</div>
-				<Button variant="outline" size="icon">
+				<Button variant="outline" size="icon" className="shrink-0">
 					<FilterIcon className="h-4 w-4" />
 					<span className="sr-only">Filter</span>
 				</Button>
@@ -446,12 +439,12 @@ export default function BudgetPage() {
 
 			{/* Budget categories section */}
 			<div className="space-y-6">
-				<Tabs defaultValue="all" className="w-full">
-					<TabsList className="mb-4">
-						<TabsTrigger value="all">All Budgets</TabsTrigger>
-						<TabsTrigger value="ontrack">On Track</TabsTrigger>
-						<TabsTrigger value="warning">Warning</TabsTrigger>
-						<TabsTrigger value="over">Over Budget</TabsTrigger>
+				<Tabs defaultValue="all" className="w-full min-w-0">
+					<TabsList className="mb-4 flex flex-wrap sm:flex-nowrap gap-1 h-auto p-1 w-full overflow-x-auto">
+						<TabsTrigger value="all" className="flex-1 sm:flex-initial shrink-0">All Budgets</TabsTrigger>
+						<TabsTrigger value="ontrack" className="flex-1 sm:flex-initial shrink-0">On Track</TabsTrigger>
+						<TabsTrigger value="warning" className="flex-1 sm:flex-initial shrink-0">Warning</TabsTrigger>
+						<TabsTrigger value="over" className="flex-1 sm:flex-initial shrink-0">Over Budget</TabsTrigger>
 					</TabsList>
 
 					<TabsContent value="all" className="space-y-6">

@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 // Wallet type options
 const walletTypes = [
@@ -92,7 +93,7 @@ export function EditWalletModal({
 		// Validate form
 		if (!name.trim()) {
 			// Add proper form validation and error messages
-			alert("Please enter a wallet name");
+			toast.error("Please enter a wallet name");
 			return;
 		}
 

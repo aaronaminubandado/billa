@@ -1,4 +1,3 @@
-//  Wallets/Accounts management page
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -12,6 +11,7 @@ import {
 	TrashIcon,
 	TrendingUpIcon,
 	TrendingDownIcon,
+	WalletIcon,
 } from "lucide-react";
 import {
 	DropdownMenu,
@@ -21,9 +21,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AddWalletModal } from "@/components/wallets/add-wallet-modal";
 import { EditWalletModal } from "@/components/wallets/edit-wallet-modal";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface WalletActivity {
 	type: string;
@@ -43,27 +44,16 @@ interface Wallet {
 	recentActivity: WalletActivity[];
 }
 
-//  Helper function to format currency
-const formatCurrency = (amount: number, currency: string) => {
-	return new Intl.NumberFormat("en-US", {
-		style: "currency",
-		currency: currency,
-	}).format(amount);
-};
-
 export default function WalletsPage() {
 	const [wallets, setWallets] = useState<Wallet[]>([]);
+	const [loading, setLoading] = useState(true);
 	const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 	const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 	const [currentWallet, setCurrentWallet] = useState<Wallet>();
 	const supabase = createClient();
 
-	const totalBalance = wallets.reduce(
-		(sum, wallet) => sum + wallet.balance,
-		0
-	);
+	const totalBalance = wallets.reduce((sum, w) => sum + w.balance, 0);
 
-	//  Handle wallet deletion
 	const handleDeleteWallet = async (id: number) => {
 		const { data: txData, error: txError } = await supabase
 			.from("transactions")
@@ -72,37 +62,29 @@ export default function WalletsPage() {
 			.limit(1);
 
 		if (txError) {
-			// Unexpected database read error
 			toast.error("Could not verify wallet activity. Try again.");
 			return;
 		}
 
 		if (txData && txData.length > 0) {
-			toast.error(
-				"Unable to delete wallet. Remove or reassign its transactions first."
-			);
+			toast.error("Remove or reassign transactions before deleting this wallet.");
 			return;
 		}
 
 		const { error } = await supabase.from("wallets").delete().eq("id", id);
-
 		if (error) {
 			toast.error("An error occurred. Try again later");
-            return;
-		} else {
-			toast.success("Wallet deleted successfully!");
+			return;
 		}
-
+		toast.success("Wallet deleted successfully!");
 		await fetchWallets();
 	};
 
-	//  Handle edit button click
 	const handleEditClick = (wallet: Wallet) => {
 		setCurrentWallet(wallet);
 		setIsEditModalOpen(true);
 	};
 
-	// Fetch wallets + their recent activity (last 3 transactions)
 	const fetchWallets = async () => {
 		try {
 			const {
@@ -112,7 +94,6 @@ export default function WalletsPage() {
 
 			if (userError || !user) return false;
 
-			// Fetch all wallets
 			const { data: walletData, error: walletError } = await supabase
 				.from("wallets")
 				.select("*")
@@ -123,49 +104,39 @@ export default function WalletsPage() {
 				return false;
 			}
 
-			// For each wallet, grab the last 3 transactions
 			const walletsWithActivity = await Promise.all(
 				walletData.map(async (wallet) => {
-					const { data: txData, error: txError } = await supabase
+					const { data: txData } = await supabase
 						.from("transactions")
 						.select("id, name, amount, type, created_at")
 						.eq("wallet_id", wallet.id)
 						.order("created_at", { ascending: false })
 						.limit(3);
 
-					if (txError) {
-						console.warn(
-							"Activity load failed for wallet",
-							wallet.id
-						);
-					}
-
-					// Format for UI
-					const formattedActivity =
-						txData?.map((item) => ({
-							id: item.id,
-							name: item.name, // Use name instead of description
-							amount: item.amount, // Keep amount for display
-							type: item.type, // "income" or "expense"
-							date: item.created_at,
-						})) ?? [];
-
 					return {
 						...wallet,
-						recentActivity: formattedActivity, // attach result
+						recentActivity:
+							txData?.map((item) => ({
+								id: item.id,
+								name: item.name,
+								amount: item.amount,
+								type: item.type,
+								date: item.created_at,
+							})) ?? [],
 					};
 				})
 			);
 
 			setWallets(walletsWithActivity);
 			return true;
-		} catch (e) {
+		} catch {
 			toast.error("Unexpected error loading wallets");
 			return false;
+		} finally {
+			setLoading(false);
 		}
 	};
 
-	// Updated handleUpdateWallet with database refresh
 	const handleUpdateWallet = async (updatedWallet: Wallet) => {
 		try {
 			const {
@@ -174,10 +145,7 @@ export default function WalletsPage() {
 			} = await supabase.auth.getUser();
 
 			if (userError || !user) {
-				console.error("Failed to get user:", userError?.message);
-				toast.error(
-					"Authentication error. Please try logging in again."
-				);
+				toast.error("Authentication error. Please try logging in again.");
 				return;
 			}
 
@@ -189,263 +157,231 @@ export default function WalletsPage() {
 				type: updatedWallet.type,
 			};
 
-			const { data, error } = await supabase
+			const { error } = await supabase
 				.from("wallets")
 				.update(walletData)
 				.eq("id", id)
 				.eq("user_id", user.id)
 				.select();
 
-			console.log("Error:", error?.message);
 			if (error) {
-				// console.error("Error updating wallet:", error.message);
 				toast.error(`Failed to update wallet: ${error.message}`);
 				return;
 			}
 
-			// Close modal first for better UX
 			setIsEditModalOpen(false);
-
-			// Refresh from database
 			const refreshSuccess = await fetchWallets();
-
-			if (refreshSuccess) {
-				toast.success("Wallet updated successfully!");
-			} else {
-				toast.error(
-					"Wallet updated, but failed to refresh the list. Please reload the page."
-				);
-			}
-		} catch (error) {
-			//console.error("Unexpected error updating wallet:", error);
-			toast.error(
-				"An unexpected error occurred while updating the wallet."
-			);
+			if (refreshSuccess) toast.success("Wallet updated successfully!");
+		} catch {
+			toast.error("An unexpected error occurred.");
 		}
 	};
 
-	// Updated handleAddWallet with database refresh
 	const handleAddWallet = async (newWallet: Wallet) => {
 		try {
-			// Get the currently authenticated user
 			const {
 				data: { user },
 				error: userError,
 			} = await supabase.auth.getUser();
 
 			if (userError || !user) {
-				//console.error("Failed to get user:", userError?.message);
-				toast.error(
-					"Authentication error. Please try logging in again."
-				);
+				toast.error("Authentication error. Please try logging in again.");
 				return;
 			}
 
-			const walletToInsert = {
-				...newWallet,
-				user_id: user.id, // Attach the current user's ID
-			};
-
-			const { data, error } = await supabase
+			const { error } = await supabase
 				.from("wallets")
-				.insert([walletToInsert])
+				.insert([{ ...newWallet, user_id: user.id }])
 				.select();
 
 			if (error) {
-				//console.error("Error inserting wallet:", error.message);
 				toast.error(`Failed to add wallet: ${error.message}`);
 				return;
 			}
 
-			// Close modal first
 			setIsAddModalOpen(false);
-
-			// Refresh from database
 			const refreshSuccess = await fetchWallets();
-
-			if (refreshSuccess) {
-				toast.success("Wallet added successfully!");
-			} else {
-				toast.error(
-					"Wallet added, but failed to refresh the list. Please reload the page."
-				);
-			}
-		} catch (error) {
-			//console.error("Unexpected error adding wallet:", error);
-			toast.error(
-				"An unexpected error occurred while adding the wallet."
-			);
+			if (refreshSuccess) toast.success("Wallet added successfully!");
+		} catch {
+			toast.error("An unexpected error occurred.");
 		}
 	};
 
-	// Update your useEffect to use the extracted function
 	useEffect(() => {
 		fetchWallets();
 	}, []);
+
 	return (
-		<div>
-			<div className="mb-8">
-				<h1 className="text-3xl font-bold">Wallets & Accounts</h1>
-				<p className="text-muted-foreground">
-					Manage your financial accounts
-				</p>
-			</div>
-
-			{/*  Total balance card */}
-			<Card className="mb-8 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-900">
-				<CardHeader className="pb-2">
-					<CardTitle className="text-xl text-green-700 dark:text-green-300">
-						Total Balance
-					</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<div className="text-3xl font-bold text-green-700 dark:text-green-300">
-						{formatCurrency(totalBalance, "USD")}
-					</div>
-					<p className="text-sm text-green-600/80 dark:text-green-400/80 mt-1">
-						Across {wallets.length} accounts
-					</p>
-				</CardContent>
-			</Card>
-
-			{/*  Action button */}
-			<div className="flex justify-end mb-6">
-				<Button onClick={() => setIsAddModalOpen(true)}>
-					<PlusIcon className="mr-2 h-4 w-4" />
+		<div className="space-y-6">
+			<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+				<div>
+					<h1 className="text-2xl font-bold tracking-tight">Wallets & Accounts</h1>
+					<p className="text-sm text-muted-foreground">Manage your financial accounts</p>
+				</div>
+				<Button onClick={() => setIsAddModalOpen(true)} size="sm" className="h-9 gap-2">
+					<PlusIcon className="h-3.5 w-3.5" />
 					Add Wallet
 				</Button>
 			</div>
 
-			{/*  Wallets grid */}
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-				{wallets.map((wallet) => (
-					<Card key={wallet.id} className="overflow-hidden">
-						<CardHeader className="pb-2">
-							<div className="flex justify-between items-start">
-								<div className="flex items-center space-x-2">
-									<span className="text-2xl">
-										{wallet.icon}
-									</span>
-									<div>
-										<CardTitle>{wallet.name}</CardTitle>
-										<Badge
-											variant="outline"
-											className="mt-1"
-										>
-											{wallet.type
-												? wallet.type
-														.charAt(0)
-														.toUpperCase() +
-												  wallet.type.slice(1)
-												: "Unknown"}
-										</Badge>
+			{/* Total Balance */}
+			<Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+				<CardContent className="p-5">
+					<div className="flex items-center gap-4">
+						<div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+							<WalletIcon className="h-6 w-6 text-primary" />
+						</div>
+						<div>
+							<p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+								Total Balance
+							</p>
+							<p className="text-3xl font-bold tracking-tight text-primary">
+								{loading ? <Skeleton className="h-9 w-40" /> : formatCurrency(totalBalance)}
+							</p>
+							{!loading && (
+								<p className="text-xs text-muted-foreground mt-0.5">
+									Across {wallets.length} account{wallets.length !== 1 ? "s" : ""}
+								</p>
+							)}
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+
+			{/* Wallets Grid */}
+			{loading ? (
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+					{[...Array(3)].map((_, i) => (
+						<Card key={i}>
+							<CardContent className="p-5 space-y-3">
+								<Skeleton className="h-5 w-32" />
+								<Skeleton className="h-8 w-24" />
+								<Skeleton className="h-16 w-full" />
+							</CardContent>
+						</Card>
+					))}
+				</div>
+			) : wallets.length === 0 ? (
+				<Card>
+					<CardContent className="flex flex-col items-center justify-center py-16">
+						<div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
+							<WalletIcon className="h-7 w-7 text-muted-foreground" />
+						</div>
+						<h3 className="text-base font-semibold mb-1">No wallets yet</h3>
+						<p className="text-sm text-muted-foreground text-center max-w-sm mb-4">
+							Create your first wallet to start tracking your finances.
+						</p>
+						<Button onClick={() => setIsAddModalOpen(true)} size="sm" className="gap-2">
+							<PlusIcon className="h-3.5 w-3.5" />
+							Create Wallet
+						</Button>
+					</CardContent>
+				</Card>
+			) : (
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+					{wallets.map((wallet, idx) => (
+						<Card
+							key={wallet.id}
+							className="overflow-hidden transition-all duration-200 hover:shadow-md animate-slide-up"
+							style={{ animationDelay: `${idx * 80}ms`, animationFillMode: "both" }}
+						>
+							<CardHeader className="p-4 pb-2">
+								<div className="flex justify-between items-start">
+									<div className="flex items-center gap-2.5">
+										<span className="text-xl">{wallet.icon}</span>
+										<div>
+											<CardTitle className="text-sm font-semibold">
+												{wallet.name}
+											</CardTitle>
+											<Badge variant="outline" className="mt-0.5 text-[10px] font-normal">
+												{wallet.type
+													? wallet.type.charAt(0).toUpperCase() + wallet.type.slice(1)
+													: "Account"}
+											</Badge>
+										</div>
+									</div>
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg">
+												<MoreHorizontalIcon className="h-3.5 w-3.5" />
+											</Button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="end">
+											<DropdownMenuItem onClick={() => handleEditClick(wallet)}>
+												<PencilIcon className="mr-2 h-3.5 w-3.5" />
+												Edit
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												onClick={() => handleDeleteWallet(wallet.id)}
+												className="text-destructive focus:text-destructive"
+											>
+												<TrashIcon className="mr-2 h-3.5 w-3.5" />
+												Delete
+											</DropdownMenuItem>
+										</DropdownMenuContent>
+									</DropdownMenu>
+								</div>
+							</CardHeader>
+							<CardContent className="p-4 pt-1">
+								<p
+									className={cn(
+										"text-2xl font-bold tracking-tight",
+										wallet.balance >= 0
+											? "text-emerald-600 dark:text-emerald-400"
+											: "text-rose-600 dark:text-rose-400"
+									)}
+								>
+									{formatCurrency(wallet.balance, wallet.currency)}
+								</p>
+							</CardContent>
+							{wallet.recentActivity.length > 0 && (
+								<div className="px-4 py-3 border-t bg-muted/30">
+									<p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+										Recent Activity
+									</p>
+									<div className="space-y-1.5">
+										{wallet.recentActivity.slice(0, 3).map((activity) => (
+											<div
+												key={activity.id}
+												className="flex justify-between items-center text-xs"
+											>
+												<span className="truncate max-w-[60%] text-muted-foreground">
+													{activity.name}
+												</span>
+												<div className="flex items-center gap-1">
+													{activity.type === "income" ? (
+														<TrendingUpIcon className="h-2.5 w-2.5 text-emerald-500" />
+													) : (
+														<TrendingDownIcon className="h-2.5 w-2.5 text-rose-500" />
+													)}
+													<span
+														className={cn(
+															"font-medium tabular-nums",
+															activity.type === "income"
+																? "text-emerald-600 dark:text-emerald-400"
+																: "text-rose-600 dark:text-rose-400"
+														)}
+													>
+														{activity.type === "income" ? "+" : "-"}
+														{formatCurrency(activity.amount, wallet.currency)}
+													</span>
+												</div>
+											</div>
+										))}
 									</div>
 								</div>
-								<DropdownMenu>
-									<DropdownMenuTrigger asChild>
-										<Button variant="ghost" size="icon">
-											<MoreHorizontalIcon className="h-4 w-4" />
-											<span className="sr-only">
-												Actions
-											</span>
-										</Button>
-									</DropdownMenuTrigger>
-									<DropdownMenuContent align="end">
-										<DropdownMenuItem
-											onClick={() =>
-												handleEditClick(wallet)
-											}
-										>
-											<PencilIcon className="mr-2 h-4 w-4" />
-											Edit
-										</DropdownMenuItem>
-										<DropdownMenuItem
-											onClick={() =>
-												handleDeleteWallet(wallet.id)
-											}
-											className="text-red-600 dark:text-red-400"
-										>
-											<TrashIcon className="mr-2 h-4 w-4" />
-											Delete
-										</DropdownMenuItem>
-									</DropdownMenuContent>
-								</DropdownMenu>
-							</div>
-						</CardHeader>
-						<CardContent>
-							<div
-								className={cn(
-									"text-2xl font-bold",
-									wallet.balance >= 0
-										? "text-green-600 dark:text-green-400"
-										: "text-red-600 dark:text-red-400"
-								)}
-							>
-								{formatCurrency(
-									wallet.balance,
-									wallet.currency
-								)}
-							</div>
-						</CardContent>
-						<div className="px-6 py-3 bg-muted/50">
-							<h4 className="text-sm font-medium mb-2">
-								Recent Activity
-							</h4>
-							<div className="space-y-2">
-								{wallet.recentActivity
-									.slice(0, 3)
-									.map((activity) => (
-										<div
-											key={activity.id}
-											className="flex justify-between items-center text-sm"
-										>
-											{/* Show name */}
-											<div className="truncate max-w-[70%]">
-												{activity.name}
-											</div>
+							)}
+						</Card>
+					))}
+				</div>
+			)}
 
-											{/* Type-based direction arrow */}
-											<div className="flex items-center">
-												{activity.type === "income" ? (
-													<TrendingUpIcon className="h-3 w-3 text-green-500 mr-1" />
-												) : (
-													<TrendingDownIcon className="h-3 w-3 text-red-500 mr-1" />
-												)}
-
-												{/* Amount formatting */}
-												<span
-													className={
-														activity.type ===
-														"income"
-															? "text-green-600"
-															: "text-red-600"
-													}
-												>
-													{activity.type === "income"
-														? "+"
-														: "-"}
-													{formatCurrency(
-														activity.amount,
-														wallet.currency
-													)}
-												</span>
-											</div>
-										</div>
-									))}
-							</div>
-						</div>
-					</Card>
-				))}
-			</div>
-
-			{/*  Add Wallet Modal */}
 			<AddWalletModal
 				isOpen={isAddModalOpen}
 				onClose={() => setIsAddModalOpen(false)}
 				onAdd={handleAddWallet}
 			/>
 
-			{/*  Edit Wallet Modal */}
 			{currentWallet && (
 				<EditWalletModal
 					isOpen={isEditModalOpen}

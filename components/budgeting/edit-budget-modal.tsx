@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { TrashIcon } from "lucide-react";
+import { toast } from "sonner";
 
 interface EditBudgetModalProps {
   isOpen: boolean;
@@ -71,7 +72,7 @@ export function EditBudgetModal({
     e.preventDefault();
 
     if (!amount || !categoryId) {
-      alert("Please fill in all required fields");
+      toast.error("Please fill in all required fields");
       return;
     }
 

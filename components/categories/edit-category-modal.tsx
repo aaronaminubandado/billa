@@ -20,6 +20,7 @@ import {
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 // Common emoji options for categories
 const emojiOptions = [
@@ -95,7 +96,7 @@ export function EditCategoryModal({
     // Validate form
     if (!name.trim()) {
       // TODO: Add proper form validation and error messages
-      alert("Please enter a category name");
+      toast.error("Please enter a category name");
       return;
     }
 

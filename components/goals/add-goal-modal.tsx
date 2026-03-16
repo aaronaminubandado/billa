@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 // Goal type options
 const goalTypes = [
@@ -90,17 +91,17 @@ export function AddGoalModal({ isOpen, onClose, onAdd }: AddGoalModalProps) {
     // Validate form
     if (!name.trim()) {
       // TODO: Add proper form validation and error messages
-      alert("Please enter a goal name");
+      toast.error("Please enter a goal name");
       return;
     }
 
     if (!targetAmount || parseFloat(targetAmount) <= 0) {
-      alert("Please enter a valid target amount");
+      toast.error("Please enter a valid target amount");
       return;
     }
 
     if (!dueDate) {
-      alert("Please select a due date");
+      toast.error("Please select a due date");
       return;
     }
 

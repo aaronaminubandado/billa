@@ -1,4 +1,3 @@
-// Categories management page
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -6,18 +5,9 @@ import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
-	CardDescription,
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -37,11 +27,14 @@ import {
 	MoreHorizontalIcon,
 	PencilIcon,
 	TrashIcon,
+	TagIcon,
 } from "lucide-react";
 import { AddCategoryModal } from "@/components/categories/add-category-modal";
 import { EditCategoryModal } from "@/components/categories/edit-category-modal";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Category {
 	id: number;
@@ -54,64 +47,47 @@ interface Category {
 
 export default function CategoriesPage() {
 	const [categories, setCategories] = useState<Category[]>([]);
+	const [loading, setLoading] = useState(true);
 	const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 	const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-	const [currentCategory, setCurrentCategory] = useState<Category | null>(
-		null
-	);
+	const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
 	const [typeFilter, setTypeFilter] = useState<string>("all");
 	const supabase = createClient();
 
 	const fetchCategories = async () => {
 		try {
-			// Get logged-in user
 			const {
 				data: { user },
 				error: userError,
 			} = await supabase.auth.getUser();
 
-			if (userError || !user) {
-				console.error("Error fetching user:", userError?.message);
-				return false;
-			}
+			if (userError || !user) return false;
 
-			// Fetch categories + embedded transaction aggregates
 			const { data, error } = await supabase
 				.from("categories")
-				.select(
-					`
-                id,
-                name,
-                type,
-                color,
-                icon,
-                transactions:transactions(count),
-                totals:transactions(sum_amount:amount)
-            `
-				)
+				.select(`
+					id, name, type, color, icon,
+					transactions:transactions(count)
+				`)
 				.eq("user_id", user.id);
 
 			if (error) {
 				toast.error("Failed to load categories");
-				console.error(error);
 				return false;
 			}
 
 			const formatted = data.map((category) => ({
 				...category,
-				// Extract count from relation response (array of rows)
 				transactionCount: category.transactions?.[0]?.count || 0,
-
-				// Extract total from relation response (array with aggregated sum)
-				totalAmount: category.totals?.[0]?.sum_amount || 0,
 			}));
 
 			setCategories(formatted);
 			return true;
-		} catch (error) {
-			console.error(error);
+		} catch {
 			toast.error("Unexpected error loading categories");
 			return false;
+		} finally {
+			setLoading(false);
 		}
 	};
 
@@ -119,17 +95,13 @@ export default function CategoriesPage() {
 		fetchCategories();
 	}, []);
 
-	// Filter categories based on type
-	const filteredCategories = categories.filter((category) => {
-		return typeFilter === "all" || category.type === typeFilter;
-	});
+	const filteredCategories = categories.filter(
+		(c) => typeFilter === "all" || c.type === typeFilter
+	);
 
-	// Handle category deletion
 	const handleDeleteCategory = async (category: Category) => {
 		if (category.transactionCount > 0) {
-			toast.warning(
-				"You cannot delete this category because it has transactions."
-			);
+			toast.warning("Cannot delete a category with existing transactions.");
 			return;
 		}
 
@@ -139,21 +111,19 @@ export default function CategoriesPage() {
 			.eq("id", category.id);
 
 		if (error) {
-			toast.error("An error occurred. Try again later.");
-		} else {
-			toast.success("Category deleted successfully!");
+			toast.error("Failed to delete category.");
+			return;
 		}
 
+		toast.success("Category deleted!");
 		await fetchCategories();
 	};
 
-	// Handle edit button click
 	const handleEditClick = (category: Category) => {
 		setCurrentCategory(category);
 		setIsEditModalOpen(true);
 	};
 
-	// Handle category update
 	const handleUpdateCategory = async (updatedCategory: Category) => {
 		try {
 			const {
@@ -162,21 +132,14 @@ export default function CategoriesPage() {
 			} = await supabase.auth.getUser();
 
 			if (userError || !user) {
-				toast.error(
-					"Authentication error. Please try logging in again."
-				);
+				toast.error("Authentication error.");
 				return;
 			}
 
 			const { id, transactionCount, ...rest } = updatedCategory;
-			const categoryData = {
-				...rest,
-				user_id: user.id,
-			};
-
-			const { data, error } = await supabase
+			const { error } = await supabase
 				.from("categories")
-				.update(categoryData)
+				.update({ ...rest, user_id: user.id })
 				.eq("id", id)
 				.eq("user_id", user.id)
 				.select();
@@ -187,24 +150,13 @@ export default function CategoriesPage() {
 			}
 
 			setIsEditModalOpen(false);
-
-			const refreshSuccess = await fetchCategories();
-
-			if (refreshSuccess) {
-				toast.success("Category updated successfully!");
-			} else {
-				toast.error(
-					"Category updated, but failed to refresh the list. Please reload the page."
-				);
-			}
-		} catch (error) {
-			toast.error(
-				"An unexpected error occurred while updating the category."
-			);
+			const success = await fetchCategories();
+			if (success) toast.success("Category updated!");
+		} catch {
+			toast.error("An unexpected error occurred.");
 		}
 	};
 
-	// Handle adding a new category
 	const handleAddCategory = async (newCategory: Category) => {
 		try {
 			const {
@@ -213,20 +165,13 @@ export default function CategoriesPage() {
 			} = await supabase.auth.getUser();
 
 			if (userError || !user) {
-				toast.error(
-					"Authentication error. Please try logging in again."
-				);
+				toast.error("Authentication error.");
 				return;
 			}
 
-			const categoryToInsert = {
-				...newCategory,
-				user_id: user.id,
-			};
-
-			const { data, error } = await supabase
+			const { error } = await supabase
 				.from("categories")
-				.insert([categoryToInsert])
+				.insert([{ ...newCategory, user_id: user.id }])
 				.select();
 
 			if (error) {
@@ -235,172 +180,188 @@ export default function CategoriesPage() {
 			}
 
 			setIsAddModalOpen(false);
-
-			const refreshSuccess = await fetchCategories();
-
-			if (refreshSuccess) {
-				toast.success("Category added successfully!");
-			} else {
-				toast.error(
-					"Category added, but failed to refresh the list. Please reload the page."
-				);
-			}
-		} catch (error) {
-			toast.error(
-				"An unexpected error occurred while adding the category."
-			);
+			const success = await fetchCategories();
+			if (success) toast.success("Category added!");
+		} catch {
+			toast.error("An unexpected error occurred.");
 		}
 	};
 
+	const expenseCount = categories.filter((c) => c.type === "expense").length;
+	const incomeCount = categories.filter((c) => c.type === "income").length;
+
 	return (
-		<div>
-			<div className="mb-8">
-				<h1 className="text-3xl font-bold">Categories</h1>
-				<p className="text-muted-foreground">
-					Manage your transaction categories
-				</p>
-			</div>
-
-			{/* Filter and action controls */}
-			<div className="flex flex-col sm:flex-row gap-4 mb-6 items-start sm:items-center justify-between">
-				<Select value={typeFilter} onValueChange={setTypeFilter}>
-					<SelectTrigger className="w-[180px]">
-						<SelectValue placeholder="Filter by type" />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="all">All Categories</SelectItem>
-						<SelectItem value="expense">Expenses</SelectItem>
-						<SelectItem value="income">Income</SelectItem>
-					</SelectContent>
-				</Select>
-
-				<Button onClick={() => setIsAddModalOpen(true)}>
-					<PlusIcon className="mr-2 h-4 w-4" />
+		<div className="space-y-6">
+			<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+				<div>
+					<h1 className="text-2xl font-bold tracking-tight">Categories</h1>
+					<p className="text-sm text-muted-foreground">
+						Organize your transactions with categories
+					</p>
+				</div>
+				<Button onClick={() => setIsAddModalOpen(true)} size="sm" className="h-9 gap-2">
+					<PlusIcon className="h-3.5 w-3.5" />
 					Add Category
 				</Button>
 			</div>
 
-			{/* Categories table */}
-			<Card>
-				<CardHeader className="pb-3">
-					<CardTitle>Your Categories</CardTitle>
-					<CardDescription>
-						Organize your transactions with custom categories
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead className="w-[50px]">Icon</TableHead>
-								<TableHead>Name</TableHead>
-								<TableHead>Type</TableHead>
-								<TableHead>Color</TableHead>
-								<TableHead className="text-right">
-									Transactions
-								</TableHead>
-								<TableHead className="w-[100px]">
-									Actions
-								</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{filteredCategories.length === 0 ? (
-								<TableRow>
-									<TableCell
-										colSpan={6}
-										className="text-center py-8 text-muted-foreground"
-									>
-										No categories found
-									</TableCell>
-								</TableRow>
-							) : (
-								filteredCategories.map((category) => (
-									<TableRow key={category.id}>
-										<TableCell className="font-medium text-xl">
-											{category.icon}
-										</TableCell>
-										<TableCell>{category.name}</TableCell>
-										<TableCell>
-											<Badge
-												variant={
-													category.type === "income"
-														? "default"
-														: "destructive"
-												}
-											>
-												{category.type
-													.charAt(0)
-													.toUpperCase() +
-													category.type.slice(1)}
-											</Badge>
-										</TableCell>
-										<TableCell>
-											<div
-												className="w-6 h-6 rounded-full"
-												style={{
-													backgroundColor:
-														category.color,
-												}}
-											/>
-										</TableCell>
-										<TableCell className="text-right">
-											{category.transactionCount}
-										</TableCell>
-										<TableCell>
-											<DropdownMenu>
-												<DropdownMenuTrigger asChild>
-													<Button
-														variant="ghost"
-														size="icon"
-													>
-														<MoreHorizontalIcon className="h-4 w-4" />
-														<span className="sr-only">
-															Actions
-														</span>
-													</Button>
-												</DropdownMenuTrigger>
-												<DropdownMenuContent align="end">
-													<DropdownMenuItem
-														onClick={() =>
-															handleEditClick(
-																category
-															)
-														}
-													>
-														<PencilIcon className="mr-2 h-4 w-4" />
-														Edit
-													</DropdownMenuItem>
-													<DropdownMenuItem
-														onClick={() =>
-															handleDeleteCategory(
-																category
-															)
-														}
-														className="text-red-600 dark:text-red-400"
-													>
-														<TrashIcon className="mr-2 h-4 w-4" />
-														Delete
-													</DropdownMenuItem>
-												</DropdownMenuContent>
-											</DropdownMenu>
-										</TableCell>
-									</TableRow>
-								))
-							)}
-						</TableBody>
-					</Table>
-				</CardContent>
-			</Card>
+			{/* Summary */}
+			{!loading && categories.length > 0 && (
+				<div className="grid grid-cols-2 sm:grid-cols-3 gap-3 min-w-0">
+					<Card>
+						<CardContent className="p-4 flex items-center gap-3">
+							<div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+								<TagIcon className="h-4 w-4 text-primary" />
+							</div>
+							<div>
+								<p className="text-xs text-muted-foreground">Total</p>
+								<p className="text-lg font-bold">{categories.length}</p>
+							</div>
+						</CardContent>
+					</Card>
+					<Card>
+						<CardContent className="p-4 flex items-center gap-3">
+							<div className="h-9 w-9 rounded-xl bg-rose-100 dark:bg-rose-500/10 flex items-center justify-center">
+								<span className="text-xs font-bold text-rose-600 dark:text-rose-400">E</span>
+							</div>
+							<div>
+								<p className="text-xs text-muted-foreground">Expense</p>
+								<p className="text-lg font-bold">{expenseCount}</p>
+							</div>
+						</CardContent>
+					</Card>
+					<Card>
+						<CardContent className="p-4 flex items-center gap-3">
+							<div className="h-9 w-9 rounded-xl bg-emerald-100 dark:bg-emerald-500/10 flex items-center justify-center">
+								<span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">I</span>
+							</div>
+							<div>
+								<p className="text-xs text-muted-foreground">Income</p>
+								<p className="text-lg font-bold">{incomeCount}</p>
+							</div>
+						</CardContent>
+					</Card>
+				</div>
+			)}
 
-			{/* Add Category Modal */}
+			{/* Filter */}
+			<div className="flex items-center gap-3">
+				<Select value={typeFilter} onValueChange={setTypeFilter}>
+					<SelectTrigger className="w-[160px] h-9 text-sm">
+						<SelectValue placeholder="Filter by type" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="all">All Types</SelectItem>
+						<SelectItem value="expense">Expense</SelectItem>
+						<SelectItem value="income">Income</SelectItem>
+					</SelectContent>
+				</Select>
+			</div>
+
+			{/* Categories Grid */}
+			{loading ? (
+				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+					{[...Array(6)].map((_, i) => (
+						<Card key={i}>
+							<CardContent className="p-4 flex items-center gap-3">
+								<Skeleton className="h-10 w-10 rounded-xl" />
+								<div className="space-y-1.5 flex-1">
+									<Skeleton className="h-4 w-24" />
+									<Skeleton className="h-3 w-16" />
+								</div>
+							</CardContent>
+						</Card>
+					))}
+				</div>
+			) : filteredCategories.length === 0 ? (
+				<Card>
+					<CardContent className="flex flex-col items-center justify-center py-16">
+						<div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
+							<TagIcon className="h-7 w-7 text-muted-foreground" />
+						</div>
+						<h3 className="text-base font-semibold mb-1">No categories found</h3>
+						<p className="text-sm text-muted-foreground text-center max-w-sm mb-4">
+							Create categories to organize your transactions.
+						</p>
+						<Button onClick={() => setIsAddModalOpen(true)} size="sm" className="gap-2">
+							<PlusIcon className="h-3.5 w-3.5" />
+							Create Category
+						</Button>
+					</CardContent>
+				</Card>
+			) : (
+				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+					{filteredCategories.map((category, idx) => (
+						<Card
+							key={category.id}
+							className="overflow-hidden transition-all duration-200 hover:shadow-md animate-slide-up"
+							style={{ animationDelay: `${idx * 50}ms`, animationFillMode: "both" }}
+						>
+							<CardContent className="p-4">
+								<div className="flex items-center justify-between">
+									<div className="flex items-center gap-3">
+										<div
+											className="h-10 w-10 rounded-xl flex items-center justify-center text-lg"
+											style={{
+												backgroundColor: `${category.color}15`,
+											}}
+										>
+											{category.icon}
+										</div>
+										<div>
+											<h3 className="text-sm font-semibold">{category.name}</h3>
+											<div className="flex items-center gap-2 mt-0.5">
+												<Badge
+													variant={category.type === "income" ? "outline" : "secondary"}
+													className={cn(
+														"text-[10px] font-normal",
+														category.type === "income"
+															? "border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400"
+															: "border-rose-200 text-rose-700 dark:border-rose-800 dark:text-rose-400"
+													)}
+												>
+													{category.type.charAt(0).toUpperCase() + category.type.slice(1)}
+												</Badge>
+												<span className="text-[10px] text-muted-foreground">
+													{category.transactionCount} transaction{category.transactionCount !== 1 ? "s" : ""}
+												</span>
+											</div>
+										</div>
+									</div>
+
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg">
+												<MoreHorizontalIcon className="h-3.5 w-3.5" />
+											</Button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="end">
+											<DropdownMenuItem onClick={() => handleEditClick(category)}>
+												<PencilIcon className="mr-2 h-3.5 w-3.5" />
+												Edit
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												onClick={() => handleDeleteCategory(category)}
+												className="text-destructive focus:text-destructive"
+											>
+												<TrashIcon className="mr-2 h-3.5 w-3.5" />
+												Delete
+											</DropdownMenuItem>
+										</DropdownMenuContent>
+									</DropdownMenu>
+								</div>
+							</CardContent>
+						</Card>
+					))}
+				</div>
+			)}
+
 			<AddCategoryModal
 				isOpen={isAddModalOpen}
 				onClose={() => setIsAddModalOpen(false)}
 				onAdd={handleAddCategory}
 			/>
 
-			{/* Edit Category Modal */}
 			{currentCategory && (
 				<EditCategoryModal
 					isOpen={isEditModalOpen}

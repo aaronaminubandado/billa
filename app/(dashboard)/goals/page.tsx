@@ -1,377 +1,442 @@
-// Savings and Debt Goals management page
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
+	Card,
+	CardContent,
+	CardFooter,
+	CardHeader,
+	CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
-  PlusIcon,
-  MoreHorizontalIcon,
-  PencilIcon,
-  TrashIcon,
-  CalendarIcon,
+	PlusIcon,
+	MoreHorizontalIcon,
+	PencilIcon,
+	TrashIcon,
+	CalendarIcon,
+	TargetIcon,
+	TrophyIcon,
+	AlertTriangleIcon,
 } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AddGoalModal } from "@/components/goals/add-goal-modal";
 import { EditGoalModal } from "@/components/goals/edit-goal-modal";
-
-//How to do this
-type BadgeVariant = 
-  | "default"
-  | "secondary"
-  | "outline"
-  | "destructive"
-  | "success"
-  | null
-  | undefined;
-
-// Sample goals data
-const sampleGoals = [
-  {
-    id: 1,
-    name: "Emergency Fund",
-    targetAmount: 10000,
-    currentAmount: 5500,
-    dueDate: "2023-12-31",
-    category: "Savings",
-    type: "savings",
-    icon: "🛡️",
-    color: "#22c55e",
-  },
-  {
-    id: 2,
-    name: "New Car",
-    targetAmount: 25000,
-    currentAmount: 8000,
-    dueDate: "2024-06-30",
-    category: "Savings",
-    type: "savings",
-    icon: "🚗",
-    color: "#3b82f6",
-  },
-  {
-    id: 3,
-    name: "Vacation Fund",
-    targetAmount: 3000,
-    currentAmount: 1200,
-    dueDate: "2023-08-15",
-    category: "Savings",
-    type: "savings",
-    icon: "✈️",
-    color: "#f97316",
-  },
-  {
-    id: 4,
-    name: "Credit Card Debt",
-    targetAmount: 5000,
-    currentAmount: 2000,
-    dueDate: "2023-10-15",
-    category: "Debt",
-    type: "debt",
-    icon: "💳",
-    color: "#ef4444",
-  },
-  {
-    id: 5,
-    name: "Student Loan",
-    targetAmount: 15000,
-    currentAmount: 15000,
-    dueDate: "2025-05-20",
-    category: "Debt",
-    type: "debt",
-    icon: "🎓",
-    color: "#a855f7",
-  },
-];
+import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
+import { formatCurrency, getDaysRemaining } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Goal {
-    id: number;
-    name: string;
-    targetAmount: number;
-    currentAmount: number;
-    dueDate: string;
-    category: string;
-    type: string;
-    icon: string;
-    color: string;
-};
-
-// Helper function to format currency
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(amount);
-};
-
-// Helper function to calculate days remaining
-const getDaysRemaining = (dueDate: string) => {
-  const today = new Date();
-  const due = new Date(dueDate);
-  const diffTime = due.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays;
-};
-
-// Helper function to determine goal status
-const getGoalStatus = (
-  currentAmount: number,
-  targetAmount: number,
-  dueDate: string
-) => {
-  const percentComplete = (currentAmount / targetAmount) * 100;
-  const daysRemaining = getDaysRemaining(dueDate);
-
-  if (daysRemaining < 0) {
-    return { label: "Overdue", color: "destructive" };
-  }
-
-  if (percentComplete >= 100) {
-    return { label: "Completed", color: "success" };
-  }
-
-  // Calculate expected progress based on time
-  const startDate = new Date("2023-01-01"); // Assuming all goals started at the beginning of the year
-  const dueDateObj = new Date(dueDate);
-  const today = new Date();
-
-  const totalDays =
-    (dueDateObj.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
-  const elapsedDays =
-    (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
-
-  const expectedProgress = (elapsedDays / totalDays) * 100;
-
-  if (percentComplete >= expectedProgress - 10) {
-    return { label: "On Track", color: "success" };
-  } else if (percentComplete >= expectedProgress - 25) {
-    return { label: "Slightly Behind", color: "warning" };
-  } else {
-    return { label: "Behind", color: "destructive" };
-  }
-};
+	id: number;
+	name: string;
+	target_amount: number;
+	current_amount: number;
+	due_date: string;
+	type: "savings" | "debt";
+	wallet_id: number | null;
+	icon: string;
+	color: string;
+}
 
 export default function GoalsPage() {
-  const [goals, setGoals] = useState(sampleGoals);
-  const [activeTab, setActiveTab] = useState("all");
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [currentGoal, setCurrentGoal] = useState<Goal | null>(null);
+	const supabase = createClient();
+	const [goals, setGoals] = useState<Goal[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [activeTab, setActiveTab] = useState("all");
+	const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+	const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+	const [currentGoal, setCurrentGoal] = useState<Goal | null>(null);
 
-  // Filter goals based on active tab
-  const filteredGoals = goals.filter((goal) => {
-    if (activeTab === "all") return true;
-    return goal.type === activeTab;
-  });
+	const getWalletBalance = async (walletId: number) => {
+		const { data, error } = await supabase
+			.from("transactions")
+			.select("amount")
+			.eq("wallet_id", walletId);
 
-  // Handle goal deletion
-  const handleDeleteGoal = (id: number) => {
-    // TODO: Implement actual deletion with Supabase
-    setGoals(goals.filter((goal) => goal.id !== id));
-  };
+		if (error) return 0;
+		return data.reduce((s, t) => s + Number(t.amount), 0);
+	};
 
-  // Handle edit button click
-  const handleEditClick = (goal: Goal) => {
-    setCurrentGoal(goal);
-    setIsEditModalOpen(true);
-  };
+	const fetchGoals = async () => {
+		const {
+			data: { user },
+		} = await supabase.auth.getUser();
 
-  // Handle goal update
-  const handleUpdateGoal = (updatedGoal: Goal) => {
-    // TODO: Implement actual update with Supabase
-    setGoals(
-      goals.map((goal) => (goal.id === updatedGoal.id ? updatedGoal : goal))
-    );
-    setIsEditModalOpen(false);
-  };
+		if (!user) {
+			toast.error("You must be logged in.");
+			setLoading(false);
+			return;
+		}
 
-  // Handle adding a new goal
-  const handleAddGoal = (newGoal: Goal) => {
-    // TODO: Implement actual creation with Supabase
-    const id = Math.max(...goals.map((g) => g.id)) + 1;
-    setGoals([...goals, { ...newGoal, id }]);
-    setIsAddModalOpen(false);
-  };
+		const { data, error } = await supabase
+			.from("goals")
+			.select("*")
+			.eq("user_id", user.id)
+			.order("created_at", { ascending: false });
 
-  return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Savings & Debt Goals</h1>
-        <p className="text-muted-foreground">
-          Track your financial goals and progress
-        </p>
-      </div>
+		if (error) {
+			toast.error("Failed to fetch goals.");
+			setLoading(false);
+			return;
+		}
 
-      {/* Tabs and action button */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6 items-start sm:items-center justify-between">
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="w-full sm:w-auto"
-        >
-          <TabsList>
-            <TabsTrigger value="all">All Goals</TabsTrigger>
-            <TabsTrigger value="savings">Savings</TabsTrigger>
-            <TabsTrigger value="debt">Debt</TabsTrigger>
-          </TabsList>
-        </Tabs>
+		const updated = await Promise.all(
+			data.map(async (goal) => {
+				if (goal.type === "savings" && goal.wallet_id) {
+					const balance = await getWalletBalance(goal.wallet_id);
+					return { ...goal, current_amount: balance };
+				}
+				return goal;
+			})
+		);
 
-        <Button onClick={() => setIsAddModalOpen(true)}>
-          <PlusIcon className="mr-2 h-4 w-4" />
-          Add Goal
-        </Button>
-      </div>
+		setGoals(updated);
+		setLoading(false);
+	};
 
-      {/* Goals grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredGoals.length === 0 ? (
-          <Card className="col-span-full">
-            <CardContent className="flex flex-col items-center justify-center py-8">
-              <p className="text-muted-foreground mb-4">No goals found</p>
-              <Button onClick={() => setIsAddModalOpen(true)}>
-                <PlusIcon className="mr-2 h-4 w-4" />
-                Add Your First Goal
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          filteredGoals.map((goal) => {
-            const percentComplete = Math.min(
-              100,
-              (goal.currentAmount / goal.targetAmount) * 100
-            );
-            const status = getGoalStatus(
-              goal.currentAmount,
-              goal.targetAmount,
-              goal.dueDate
-            );
-            const daysRemaining = getDaysRemaining(goal.dueDate);
+	useEffect(() => {
+		fetchGoals();
+	}, []);
 
-            return (
-              <Card key={goal.id} className="overflow-hidden">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-2xl">{goal.icon}</span>
-                      <div>
-                        <CardTitle>{goal.name}</CardTitle>
-                        <Badge
-                          variant={
-                            goal.type === "savings" ? "outline" : "secondary"
-                          }
-                          className="mt-1"
-                        >
-                          {goal.type.charAt(0).toUpperCase() +
-                            goal.type.slice(1)}
-                        </Badge>
-                      </div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontalIcon className="h-4 w-4" />
-                          <span className="sr-only">Actions</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEditClick(goal)}>
-                          <PencilIcon className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleDeleteGoal(goal.id)}
-                          className="text-red-600 dark:text-red-400"
-                        >
-                          <TrashIcon className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardHeader>
-                <CardContent className="pb-2">
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="text-sm text-muted-foreground">
-                      Progress
-                    </div>
-                    <div className="text-sm font-medium">
-                      {percentComplete.toFixed(0)}%
-                    </div>
-                  </div>
-                  <Progress
-                    value={percentComplete}
-                    className="h-2"
-                    style={
-                      {
-                        "--progress-background": goal.color,
-                      } as React.CSSProperties
-                    }
-                  />
+	const handleAddGoal = async (goalInput: any) => {
+		const {
+			data: { user },
+		} = await supabase.auth.getUser();
 
-                  <div className="mt-4 space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Current
-                      </span>
-                      <span className="text-sm font-medium">
-                        {formatCurrency(goal.currentAmount)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Target
-                      </span>
-                      <span className="text-sm font-medium">
-                        {formatCurrency(goal.targetAmount)}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-between pt-2">
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <CalendarIcon className="mr-1 h-3 w-3" />
-                    {daysRemaining > 0
-                      ? `${daysRemaining} days left`
-                      : "Due date passed"}
-                  </div>
-                  <Badge variant={status.color as BadgeVariant}>{status.label}</Badge>
-                </CardFooter>
-              </Card>
-            );
-          })
-        )}
-      </div>
+		if (!user) {
+			toast.error("Not authenticated");
+			return;
+		}
 
-      {/* Add Goal Modal */}
-      <AddGoalModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAdd={handleAddGoal}
-      />
+		const { error } = await supabase.from("goals").insert({
+			user_id: user.id,
+			wallet_id: goalInput.type === "savings" ? goalInput.wallet_id : null,
+			name: goalInput.name,
+			target_amount: goalInput.targetAmount,
+			current_amount: goalInput.type === "savings" ? 0 : goalInput.currentAmount,
+			due_date: goalInput.dueDate,
+			icon: goalInput.icon,
+			color: goalInput.color,
+			type: goalInput.type,
+		});
 
-      {/* Edit Goal Modal */}
-      {currentGoal && (
-        <EditGoalModal
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          goal={currentGoal}
-          onUpdate={handleUpdateGoal}
-        />
-      )}
-    </div>
-  );
+		if (error) {
+			toast.error("Failed to add goal");
+			return;
+		}
+
+		toast.success("Goal added!");
+		setIsAddModalOpen(false);
+		fetchGoals();
+	};
+
+	const handleUpdateGoal = async (goal: Goal) => {
+		if (goal.type === "savings") {
+			toast.error("Savings goals are auto-tracked via wallet balance.");
+			return;
+		}
+
+		const { error } = await supabase
+			.from("goals")
+			.update({
+				name: goal.name,
+				target_amount: goal.target_amount,
+				current_amount: goal.current_amount,
+				due_date: goal.due_date,
+				icon: goal.icon,
+				color: goal.color,
+			})
+			.eq("id", goal.id);
+
+		if (error) {
+			toast.error("Failed to update goal");
+			return;
+		}
+
+		toast.success("Goal updated!");
+		setIsEditModalOpen(false);
+		fetchGoals();
+	};
+
+	const handleDeleteGoal = async (id: number) => {
+		const { error } = await supabase.from("goals").delete().eq("id", id);
+		if (error) {
+			toast.error("Failed to delete goal.");
+			return;
+		}
+		toast.success("Goal deleted!");
+		fetchGoals();
+	};
+
+	const filteredGoals = goals.filter((g) => {
+		if (activeTab === "all") return true;
+		return g.type === activeTab;
+	});
+
+	const totalTarget = goals.reduce((s, g) => s + g.target_amount, 0);
+	const totalCurrent = goals.reduce((s, g) => s + g.current_amount, 0);
+	const overallProgress = totalTarget > 0 ? (totalCurrent / totalTarget) * 100 : 0;
+
+	return (
+		<div className="space-y-6">
+			<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+				<div>
+					<h1 className="text-2xl font-bold tracking-tight">Goals</h1>
+					<p className="text-sm text-muted-foreground">
+						Track your savings and debt goals
+					</p>
+				</div>
+				<Button onClick={() => setIsAddModalOpen(true)} size="sm" className="h-9 gap-2">
+					<PlusIcon className="h-3.5 w-3.5" />
+					Add Goal
+				</Button>
+			</div>
+
+			{/* Goals Summary */}
+			{!loading && goals.length > 0 && (
+				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+					<Card>
+						<CardContent className="p-4">
+							<div className="flex items-center gap-3">
+								<div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+									<TargetIcon className="h-5 w-5 text-primary" />
+								</div>
+								<div>
+									<p className="text-xs text-muted-foreground font-medium">Total Target</p>
+									<p className="text-lg font-bold">{formatCurrency(totalTarget)}</p>
+								</div>
+							</div>
+						</CardContent>
+					</Card>
+					<Card>
+						<CardContent className="p-4">
+							<div className="flex items-center gap-3">
+								<div className="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/10 flex items-center justify-center">
+									<TrophyIcon className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+								</div>
+								<div>
+									<p className="text-xs text-muted-foreground font-medium">Progress</p>
+									<p className="text-lg font-bold">{formatCurrency(totalCurrent)}</p>
+								</div>
+							</div>
+						</CardContent>
+					</Card>
+					<Card>
+						<CardContent className="p-4">
+							<div className="flex items-center gap-3">
+								<div className="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-500/10 flex items-center justify-center">
+									<span className="text-sm font-bold text-blue-600 dark:text-blue-400">%</span>
+								</div>
+								<div>
+									<p className="text-xs text-muted-foreground font-medium">Overall</p>
+									<p className="text-lg font-bold">{overallProgress.toFixed(0)}%</p>
+								</div>
+							</div>
+							<Progress value={overallProgress} className="h-1.5 mt-2" />
+						</CardContent>
+					</Card>
+				</div>
+			)}
+
+			{/* Tabs */}
+			<Tabs value={activeTab} onValueChange={setActiveTab}>
+				<TabsList className="h-9">
+					<TabsTrigger value="all" className="text-xs px-4">All</TabsTrigger>
+					<TabsTrigger value="savings" className="text-xs px-4">Savings</TabsTrigger>
+					<TabsTrigger value="debt" className="text-xs px-4">Debt</TabsTrigger>
+				</TabsList>
+			</Tabs>
+
+			{/* Goals Grid */}
+			{loading ? (
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+					{[...Array(3)].map((_, i) => (
+						<Card key={i}>
+							<CardContent className="p-5 space-y-3">
+								<Skeleton className="h-5 w-32" />
+								<Skeleton className="h-2 w-full" />
+								<Skeleton className="h-8 w-24" />
+							</CardContent>
+						</Card>
+					))}
+				</div>
+			) : filteredGoals.length === 0 ? (
+				<Card>
+					<CardContent className="flex flex-col items-center justify-center py-16">
+						<div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
+							<TargetIcon className="h-7 w-7 text-muted-foreground" />
+						</div>
+						<h3 className="text-base font-semibold mb-1">No goals yet</h3>
+						<p className="text-sm text-muted-foreground text-center max-w-sm mb-4">
+							Set your first financial goal to start tracking your progress.
+						</p>
+						<Button onClick={() => setIsAddModalOpen(true)} size="sm" className="gap-2">
+							<PlusIcon className="h-3.5 w-3.5" />
+							Create Goal
+						</Button>
+					</CardContent>
+				</Card>
+			) : (
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+					{filteredGoals.map((goal, idx) => {
+						const pct = Math.min(100, (goal.current_amount / goal.target_amount) * 100);
+						const daysLeft = getDaysRemaining(goal.due_date);
+						const isCompleted = pct >= 100;
+						const isOverdue = daysLeft <= 0 && !isCompleted;
+						const isNearDue = daysLeft > 0 && daysLeft <= 7 && !isCompleted;
+
+						return (
+							<Card
+								key={goal.id}
+								className={cn(
+									"overflow-hidden transition-all duration-200 hover:shadow-md animate-slide-up",
+									isCompleted && "border-emerald-200 dark:border-emerald-900"
+								)}
+								style={{ animationDelay: `${idx * 80}ms`, animationFillMode: "both" }}
+							>
+								<CardHeader className="p-4 pb-2">
+									<div className="flex justify-between items-start">
+										<div className="flex items-center gap-2.5">
+											<span className="text-xl">{goal.icon}</span>
+											<div>
+												<CardTitle className="text-sm font-semibold">{goal.name}</CardTitle>
+												<div className="flex items-center gap-1.5 mt-0.5">
+													<Badge
+														variant={goal.type === "savings" ? "outline" : "secondary"}
+														className="text-[10px] font-normal"
+													>
+														{goal.type}
+													</Badge>
+													{isCompleted && (
+														<Badge className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 hover:bg-emerald-100">
+															Completed
+														</Badge>
+													)}
+												</div>
+											</div>
+										</div>
+										<DropdownMenu>
+											<DropdownMenuTrigger asChild>
+												<Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg">
+													<MoreHorizontalIcon className="h-3.5 w-3.5" />
+												</Button>
+											</DropdownMenuTrigger>
+											<DropdownMenuContent align="end">
+												<DropdownMenuItem
+													onClick={() => {
+														setCurrentGoal(goal);
+														setIsEditModalOpen(true);
+													}}
+												>
+													<PencilIcon className="mr-2 h-3.5 w-3.5" />
+													Edit
+												</DropdownMenuItem>
+												<DropdownMenuItem
+													onClick={() => handleDeleteGoal(goal.id)}
+													className="text-destructive focus:text-destructive"
+												>
+													<TrashIcon className="mr-2 h-3.5 w-3.5" />
+													Delete
+												</DropdownMenuItem>
+											</DropdownMenuContent>
+										</DropdownMenu>
+									</div>
+								</CardHeader>
+
+								<CardContent className="p-4 pt-2">
+									<div className="flex justify-between items-center text-xs text-muted-foreground mb-1.5">
+										<span>Progress</span>
+										<span className="font-semibold text-foreground">{pct.toFixed(0)}%</span>
+									</div>
+									<div className="relative">
+										<Progress
+											value={pct}
+											className="h-2"
+										/>
+										<div
+											className="absolute inset-0 h-2 rounded-full"
+											style={{
+												background: goal.color,
+												width: `${Math.min(100, pct)}%`,
+												opacity: 0.8,
+												borderRadius: "9999px",
+											}}
+										/>
+									</div>
+
+									<div className="mt-3 space-y-1">
+										<div className="flex justify-between text-xs">
+											<span className="text-muted-foreground">Current</span>
+											<span className="font-medium tabular-nums">{formatCurrency(goal.current_amount)}</span>
+										</div>
+										<div className="flex justify-between text-xs">
+											<span className="text-muted-foreground">Target</span>
+											<span className="font-medium tabular-nums">{formatCurrency(goal.target_amount)}</span>
+										</div>
+									</div>
+								</CardContent>
+
+								<CardFooter className="px-4 py-3 border-t bg-muted/30">
+									<div className="flex items-center gap-1.5 text-xs">
+										{isOverdue ? (
+											<>
+												<AlertTriangleIcon className="h-3 w-3 text-rose-500" />
+												<span className="text-rose-600 dark:text-rose-400 font-medium">Overdue</span>
+											</>
+										) : isNearDue ? (
+											<>
+												<CalendarIcon className="h-3 w-3 text-amber-500" />
+												<span className="text-amber-600 dark:text-amber-400 font-medium">
+													{daysLeft} day{daysLeft !== 1 ? "s" : ""} left
+												</span>
+											</>
+										) : isCompleted ? (
+											<>
+												<TrophyIcon className="h-3 w-3 text-emerald-500" />
+												<span className="text-emerald-600 dark:text-emerald-400 font-medium">
+													Goal achieved!
+												</span>
+											</>
+										) : (
+											<>
+												<CalendarIcon className="h-3 w-3 text-muted-foreground" />
+												<span className="text-muted-foreground">
+													{daysLeft} day{daysLeft !== 1 ? "s" : ""} remaining
+												</span>
+											</>
+										)}
+									</div>
+								</CardFooter>
+							</Card>
+						);
+					})}
+				</div>
+			)}
+
+			<AddGoalModal
+				isOpen={isAddModalOpen}
+				onClose={() => setIsAddModalOpen(false)}
+				onAdd={handleAddGoal}
+			/>
+
+			{currentGoal && (
+				<EditGoalModal
+					isOpen={isEditModalOpen}
+					onClose={() => setIsEditModalOpen(false)}
+					goal={currentGoal}
+					onUpdate={handleUpdateGoal}
+				/>
+			)}
+		</div>
+	);
 }

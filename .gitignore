@@ -39,3 +39,5 @@ next-env.d.ts
 notes.txt
 db.txt
 billa_schema.sql
+
+.cursor

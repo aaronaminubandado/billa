@@ -1,7 +1,7 @@
-
 "use client";
 
 import React, { useState } from "react";
+import { cn } from "@/lib/utils";
 import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/top-bar";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -17,12 +17,21 @@ export default function DashboardLayout({
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <div className="flex min-h-screen flex-col">
         <TopBar />
-        <div className="flex flex-1 pt-16">
+        <div className="flex flex-1 pt-14">
           <Sidebar
             collapsed={sidebarCollapsed}
             setCollapsed={setSidebarCollapsed}
           />
-          <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6">{children}</main>
+          <main
+            className={cn(
+              "flex-1 min-w-0 p-4 sm:p-5 md:p-6 lg:p-8 pb-20 md:pb-8 overflow-x-hidden transition-[margin] duration-300",
+              sidebarCollapsed ? "md:ml-[68px]" : "md:ml-60"
+            )}
+          >
+            <div className="max-w-7xl mx-auto animate-in">
+              {children}
+            </div>
+          </main>
         </div>
       </div>
     </ThemeProvider>

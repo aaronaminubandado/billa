@@ -25,6 +25,7 @@ import {
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
 
 interface AddTransactionModalProps {
 	isOpen: boolean;
@@ -102,7 +103,7 @@ export function AddTransactionModal({
 		e.preventDefault();
 
 		if (!name.trim() || !amount || !categoryId || !walletId) {
-			alert("Please fill in all required fields");
+			toast.error("Please fill in all required fields");
 			return;
 		}
 

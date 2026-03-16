@@ -1,11 +1,10 @@
-// Transactions List component
 "use client";
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { EditIcon, TrashIcon, MoreHorizontalIcon, BanIcon } from "lucide-react"; // <-- Added BanIcon
+import { EditIcon, MoreHorizontalIcon, BanIcon, InboxIcon } from "lucide-react";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -22,12 +21,13 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CreditCardIcon } from "lucide-react";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface TransactionsListProps {
 	transactions: any[];
 	onEdit: (transaction: any) => void;
-	onCancel: (transactionId: string) => void; // <-- renamed from onDelete
+	onCancel: (transactionId: string) => void;
 }
 
 export function TransactionsList({
@@ -51,182 +51,127 @@ export function TransactionsList({
 		}
 	};
 
-	const formatDate = (dateString: string) => {
-		const date = new Date(dateString);
-		return date.toLocaleDateString("en-US", {
-			year: "numeric",
-			month: "short",
-			day: "numeric",
-		});
-	};
-
 	if (transactions.length === 0) {
 		return (
 			<Card>
-				<CardContent className="flex flex-col items-center justify-center py-12">
-					<div className="text-muted-foreground text-center">
-						<CreditCardIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-						<h3 className="text-lg font-medium mb-2">
-							No transactions found
-						</h3>
-						<p>
-							Try adjusting your filters or add your first
-							transaction.
-						</p>
+				<CardContent className="flex flex-col items-center justify-center py-16">
+					<div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
+						<InboxIcon className="h-7 w-7 text-muted-foreground" />
 					</div>
+					<h3 className="text-base font-semibold mb-1">
+						No transactions found
+					</h3>
+					<p className="text-sm text-muted-foreground text-center max-w-sm">
+						Try adjusting your filters or add your first transaction to get started.
+					</p>
 				</CardContent>
 			</Card>
 		);
 	}
 
 	return (
-		<div className="space-y-4">
+		<div className="space-y-3">
 			<Card>
-				<CardHeader>
-					<CardTitle>
-						Recent Transactions ({transactions.length})
-					</CardTitle>
+				<CardHeader className="py-4 px-5">
+					<div className="flex items-center justify-between">
+						<CardTitle className="text-base font-semibold">
+							Transactions
+						</CardTitle>
+						<Badge variant="secondary" className="text-xs font-medium">
+							{transactions.length} total
+						</Badge>
+					</div>
 				</CardHeader>
-				<CardContent>
-					<div className="space-y-4">
-						{transactions.map((transaction) => {
-							const isCanceled =
-								transaction.status === "canceled";
+				<CardContent className="px-5 pb-5">
+					<div className="space-y-2">
+						{transactions.map((transaction, idx) => {
+							const isCanceled = transaction.status === "canceled";
 
 							return (
 								<div
 									key={transaction.id}
-									className={`flex items-center justify-between p-4 border rounded-lg transition-colors
-                    ${
-						isCanceled
-							? "opacity-50 bg-red-50 dark:bg-red-900/20"
-							: "hover:bg-muted/50"
-					}  
-                  `}
+									className={cn(
+										"flex items-center justify-between p-3.5 rounded-xl border transition-all duration-200 animate-slide-up",
+										isCanceled
+											? "opacity-50 bg-destructive/5 border-destructive/20"
+											: "hover:bg-accent/50 hover:shadow-sm"
+									)}
+									style={{ animationDelay: `${Math.min(idx * 30, 300)}ms`, animationFillMode: "both" }}
 								>
-									<div className="flex items-center space-x-4">
-										{/* Category Icon */}
+									<div className="flex items-center gap-3 min-w-0 flex-1">
 										<div
-											className="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg"
+											className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
 											style={{
-												backgroundColor:
-													transaction.category.color,
+												backgroundColor: transaction.category?.color
+													? `${transaction.category.color}20`
+													: "hsl(var(--muted))",
+												color: transaction.category?.color || "hsl(var(--muted-foreground))",
 											}}
 										>
-											{transaction.category.icon}
+											{transaction.category?.icon || "💰"}
 										</div>
 
-										{/* Details */}
-										<div className="flex-1">
-											<div className="flex items-center gap-2">
-												<h4 className="font-medium">
+										<div className="min-w-0 flex-1">
+											<div className="flex items-center gap-1.5">
+												<h4 className="text-sm font-medium truncate">
 													{transaction.name}
 												</h4>
-
-												{/* Recurring Badge */}
 												{transaction.recurring && (
-													<Badge
-														variant="secondary"
-														className="text-xs"
-													>
+													<Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal">
 														Recurring
 													</Badge>
 												)}
-
-												{/* NEW — Canceled Badge */}
 												{isCanceled && (
-													<Badge
-														variant="destructive"
-														className="text-xs"
-													>
+													<Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">
 														Canceled
 													</Badge>
 												)}
 											</div>
-
-											<div className="flex items-center gap-4 text-sm text-muted-foreground">
-												<span>
-													{transaction.category.name}
-												</span>
-												<span>•</span>
-												<span>
-													{transaction.wallet.name}
-												</span>
-												<span>•</span>
-												<span>
-													{formatDate(
-														transaction.date
-													)}
-												</span>
+											<div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+												<span>{transaction.category?.name || "Uncategorized"}</span>
+												<span className="text-muted-foreground/40">·</span>
+												<span>{transaction.wallet?.name || "No wallet"}</span>
+												<span className="text-muted-foreground/40">·</span>
+												<span>{formatDate(transaction.date)}</span>
 											</div>
-
-											{transaction.notes && (
-												<p className="text-sm text-muted-foreground mt-1">
-													{transaction.notes}
-												</p>
-											)}
 										</div>
 									</div>
 
-									{/* Amount + Actions */}
-									<div className="flex items-center space-x-4">
+									<div className="flex items-center gap-2 flex-shrink-0 ml-3">
 										<div className="text-right">
 											<div
-												className={`font-semibold ${
-													transaction.type ===
-													"income"
-														? "text-green-600"
-														: "text-red-600"
-												}`}
+												className={cn(
+													"text-sm font-semibold tabular-nums",
+													transaction.type === "income"
+														? "text-emerald-600 dark:text-emerald-400"
+														: "text-rose-600 dark:text-rose-400"
+												)}
 											>
-												{transaction.type === "income"
-													? "+"
-													: "-"}
-												$
-												{transaction.amount.toLocaleString()}
-											</div>
-											<div className="text-xs text-muted-foreground">
-												{transaction.type === "income"
-													? "Income"
-													: "Expense"}
+												{transaction.type === "income" ? "+" : "-"}
+												{formatCurrency(transaction.amount)}
 											</div>
 										</div>
 
-										{/* Action Menu */}
 										<DropdownMenu>
 											<DropdownMenuTrigger asChild>
-												<Button
-													variant="ghost"
-													size="icon"
-												>
-													<MoreHorizontalIcon className="h-4 w-4" />
+												<Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg">
+													<MoreHorizontalIcon className="h-3.5 w-3.5" />
 												</Button>
 											</DropdownMenuTrigger>
-
 											<DropdownMenuContent align="end">
-												{/* Disable editing if canceled */}
 												<DropdownMenuItem
 													disabled={isCanceled}
-													onClick={() =>
-														!isCanceled &&
-														onEdit(transaction)
-													}
+													onClick={() => !isCanceled && onEdit(transaction)}
 												>
-													<EditIcon className="h-4 w-4 mr-2" />
+													<EditIcon className="h-3.5 w-3.5 mr-2" />
 													Edit
 												</DropdownMenuItem>
-
-												{/* Cancel Transaction */}
 												{!isCanceled && (
 													<DropdownMenuItem
-														onClick={() =>
-															handleCancelClick(
-																transaction
-															)
-														}
-														className="text-red-600"
+														onClick={() => handleCancelClick(transaction)}
+														className="text-destructive focus:text-destructive"
 													>
-														<BanIcon className="h-4 w-4 mr-2" />
+														<BanIcon className="h-3.5 w-3.5 mr-2" />
 														Cancel
 													</DropdownMenuItem>
 												)}
@@ -240,26 +185,20 @@ export function TransactionsList({
 				</CardContent>
 			</Card>
 
-			{/* Cancel Confirmation */}
-			<AlertDialog
-				open={cancelDialogOpen}
-				onOpenChange={setCancelDialogOpen}
-			>
+			<AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Cancel Transaction</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to cancel "
-							{transactionToCancel?.name}"? Canceling will revert
-							the wallet balance and cannot be undone.
+							Are you sure you want to cancel &ldquo;{transactionToCancel?.name}&rdquo;?
+							This action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
-
 					<AlertDialogFooter>
 						<AlertDialogCancel>Close</AlertDialogCancel>
 						<AlertDialogAction
 							onClick={handleCancelConfirm}
-							className="bg-red-600 hover:bg-red-700"
+							className="bg-destructive hover:bg-destructive/90"
 						>
 							Cancel Transaction
 						</AlertDialogAction>

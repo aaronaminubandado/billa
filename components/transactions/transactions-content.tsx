@@ -127,17 +127,12 @@ export function TransactionsContent() {
 
 		// Search filter
 		if (searchTerm) {
+			const term = searchTerm.toLowerCase();
 			filtered = filtered.filter(
 				(transaction) =>
-					transaction.name
-						.toLowerCase()
-						.includes(searchTerm.toLowerCase()) ||
-					transaction.category.name
-						.toLowerCase()
-						.includes(searchTerm.toLowerCase()) ||
-					transaction.wallet.name
-						.toLowerCase()
-						.includes(searchTerm.toLowerCase())
+					transaction.name?.toLowerCase().includes(term) ||
+					transaction.category?.name?.toLowerCase().includes(term) ||
+					transaction.wallet?.name?.toLowerCase().includes(term)
 			);
 		}
 
@@ -152,15 +147,14 @@ export function TransactionsContent() {
 		if (categoryFilter !== "all") {
 			filtered = filtered.filter(
 				(transaction) =>
-					transaction.category.id === Number.parseInt(categoryFilter)
+					transaction.category?.id?.toString() === categoryFilter
 			);
 		}
 
-		// Wallet filter
 		if (walletFilter !== "all") {
 			filtered = filtered.filter(
 				(transaction) =>
-					transaction.wallet.id === Number.parseInt(walletFilter)
+					transaction.wallet?.id?.toString() === walletFilter
 			);
 		}
 
@@ -302,20 +296,19 @@ export function TransactionsContent() {
 	};
 
 	return (
-		<div className="space-y-6">
-			{/* Header */}
+		<div className="space-y-5">
 			<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
 				<div>
 					<h1 className="text-2xl font-bold tracking-tight">
 						Transactions
 					</h1>
-					<p className="text-muted-foreground">
+					<p className="text-sm text-muted-foreground">
 						Track your income and expenses
 					</p>
 				</div>
 
-				<Button onClick={() => setIsAddModalOpen(true)}>
-					<PlusIcon className="h-4 w-4 mr-2" />
+				<Button onClick={() => setIsAddModalOpen(true)} size="sm" className="h-9 gap-2">
+					<PlusIcon className="h-3.5 w-3.5" />
 					Add Transaction
 				</Button>
 			</div>
@@ -324,10 +317,10 @@ export function TransactionsContent() {
 			<TransactionsSummary transactions={filteredTransactions} />
 
 			{/* Filters */}
-			<div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-				<div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+			<div className="flex flex-col gap-3 sm:gap-4">
+				<div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 w-full min-w-0">
 					{/* Search */}
-					<div className="relative w-full sm:w-64">
+					<div className="relative w-full min-w-0 sm:max-w-[16rem]">
 						<SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
 						<Input
 							placeholder="Search transactions..."
@@ -339,7 +332,7 @@ export function TransactionsContent() {
 
 					{/* Type Filter */}
 					<Select value={typeFilter} onValueChange={setTypeFilter}>
-						<SelectTrigger className="w-full sm:w-32">
+						<SelectTrigger className="w-full min-w-0 sm:w-32">
 							<SelectValue placeholder="Type" />
 						</SelectTrigger>
 						<SelectContent>
@@ -354,7 +347,7 @@ export function TransactionsContent() {
 						value={categoryFilter}
 						onValueChange={setCategoryFilter}
 					>
-						<SelectTrigger className="w-full sm:w-40">
+						<SelectTrigger className="w-full min-w-0 sm:w-40">
 							<SelectValue placeholder="Category" />
 						</SelectTrigger>
 						<SelectContent>
@@ -380,7 +373,7 @@ export function TransactionsContent() {
 						value={walletFilter}
 						onValueChange={setWalletFilter}
 					>
-						<SelectTrigger className="w-full sm:w-40">
+						<SelectTrigger className="w-full min-w-0 sm:w-40">
 							<SelectValue placeholder="Wallet" />
 						</SelectTrigger>
 						<SelectContent>
@@ -397,17 +390,18 @@ export function TransactionsContent() {
 					</Select>
 				</div>
 
-				<div className="flex gap-2">
+				<div className="flex flex-wrap gap-2">
 					<Button
 						variant="outline"
 						size="sm"
+						className="h-9"
 						onClick={handleClearFilters}
 					>
 						Clear Filters
 					</Button>
-					<Button variant="outline" size="sm">
-						<FilterIcon className="h-4 w-4 mr-2" />
-						Advanced
+					<Button variant="outline" size="sm" className="h-9">
+						<FilterIcon className="h-3.5 w-3.5 sm:mr-2" />
+						<span className="hidden sm:inline">Advanced</span>
 					</Button>
 				</div>
 			</div>

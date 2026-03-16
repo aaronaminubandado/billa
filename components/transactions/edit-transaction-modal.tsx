@@ -25,6 +25,7 @@ import {
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
 
 interface EditTransactionModalProps {
 	isOpen: boolean;
@@ -62,11 +63,11 @@ export function EditTransactionModal({
 			setType(transaction.type || "expense");
 			setName(transaction.name || "");
 			setAmount(transaction.amount?.toString() || "");
-			setCategoryId(transaction.categoryId?.toString() || "");
-			setWalletId(transaction.walletId?.toString() || "");
+			setCategoryId((transaction.category_id ?? transaction.categoryId)?.toString() || "");
+			setWalletId((transaction.wallet_id ?? transaction.walletId)?.toString() || "");
 			setDate(transaction.date || new Date().toISOString().split("T")[0]);
 			setRecurring(transaction.recurring || false);
-			setRecurringFrequency(transaction.recurringFrequency || "monthly");
+			setRecurringFrequency(transaction.recurring_frequency ?? transaction.recurringFrequency ?? "monthly");
 			setNotes(transaction.notes || "");
 		}
 	}, [transaction, isOpen]);
@@ -120,7 +121,7 @@ export function EditTransactionModal({
 		e.preventDefault();
 
 		if (!name.trim() || !amount || !categoryId || !walletId) {
-			alert("Please fill in all required fields");
+			toast.error("Please fill in all required fields");
 			return;
 		}
 

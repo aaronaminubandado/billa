@@ -33,19 +33,24 @@ export default function ForgotPasswordPage() {
 
     setIsSubmitting(true);
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/login`,
-    });
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/login`,
+      });
 
-    setIsSubmitting(false);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
 
-    if (error) {
-      toast.error(error.message);
+      setIsSent(true);
+      toast.success("Password reset link sent!");
+    } catch (error) {
+      toast.error((error as { message?: string })?.message || "Unexpected error");
       return;
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSent(true);
-    toast.success("Password reset link sent!");
   };
 
   return (

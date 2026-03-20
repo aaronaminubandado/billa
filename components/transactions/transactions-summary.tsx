@@ -61,7 +61,7 @@ export function TransactionsSummary({
     },
     {
       label: "Net Amount",
-      value: formatCurrency(Math.abs(netAmount)),
+      value: formatCurrency(netAmount),
       sub: netAmount >= 0 ? "Surplus" : "Deficit",
       icon: DollarSignIcon,
       color: netAmount >= 0

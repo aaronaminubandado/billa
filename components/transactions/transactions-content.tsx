@@ -16,6 +16,12 @@ import { AddTransactionModal } from "@/components/transactions/add-transaction-m
 import { EditTransactionModal } from "@/components/transactions/edit-transaction-modal";
 import { TransactionsList } from "@/components/transactions/transactions-list";
 import { TransactionsSummary } from "@/components/transactions/transactions-summary";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 
@@ -399,10 +405,19 @@ export function TransactionsContent() {
 					>
 						Clear Filters
 					</Button>
-					<Button variant="outline" size="sm" className="h-9">
-						<FilterIcon className="h-3.5 w-3.5 sm:mr-2" />
-						<span className="hidden sm:inline">Advanced</span>
-					</Button>
+					<TooltipProvider delayDuration={0}>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<span>
+									<Button variant="outline" size="sm" className="h-9" disabled>
+										<FilterIcon className="h-3.5 w-3.5 sm:mr-2" />
+										<span className="hidden sm:inline">Advanced</span>
+									</Button>
+								</span>
+							</TooltipTrigger>
+							<TooltipContent>Advanced filters coming soon</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 				</div>
 			</div>
 

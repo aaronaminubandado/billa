@@ -95,7 +95,13 @@ export function AddGoalModal({ isOpen, onClose, onAdd }: AddGoalModalProps) {
       return;
     }
 
-    if (!targetAmount || parseFloat(targetAmount) <= 0) {
+    const parsedTargetAmount = parseFloat(targetAmount);
+    if (
+      !targetAmount ||
+      Number.isNaN(parsedTargetAmount) ||
+      !Number.isFinite(parsedTargetAmount) ||
+      parsedTargetAmount <= 0
+    ) {
       toast.error("Please enter a valid target amount");
       return;
     }
@@ -109,7 +115,7 @@ export function AddGoalModal({ isOpen, onClose, onAdd }: AddGoalModalProps) {
     const newGoal = {
       name,
       type,
-      targetAmount: parseFloat(targetAmount),
+      targetAmount: parsedTargetAmount,
       currentAmount: parseFloat(currentAmount) || 0,
       dueDate,
       icon,

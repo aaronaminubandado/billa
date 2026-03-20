@@ -48,6 +48,23 @@ interface Goal {
 	color: string;
 }
 
+interface GoalInput {
+	name: string;
+	type: "savings" | "debt";
+	targetAmount: number;
+	currentAmount: number;
+	dueDate: string;
+	icon: string;
+	color: string;
+	wallet_id?: number | null;
+}
+
+type GoalUpdateInput = Goal & {
+	targetAmount?: number;
+	currentAmount?: number;
+	dueDate?: string;
+};
+
 export default function GoalsPage() {
 	const supabase = createClient();
 	const [goals, setGoals] = useState<Goal[]>([]);
@@ -63,52 +80,73 @@ export default function GoalsPage() {
 			.select("amount")
 			.eq("wallet_id", walletId);
 
-		if (error) return 0;
+		if (error) {
+			console.error("Failed to fetch wallet balance:", error);
+			throw error;
+		}
 		return data.reduce((s, t) => s + Number(t.amount), 0);
 	};
 
 	const fetchGoals = async () => {
-		const {
-			data: { user },
-		} = await supabase.auth.getUser();
+		try {
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
 
-		if (!user) {
-			toast.error("You must be logged in.");
+			if (!user) {
+				toast.error("You must be logged in.");
+				return;
+			}
+
+			const { data, error } = await supabase
+				.from("goals")
+				.select("*")
+				.eq("user_id", user.id)
+				.order("created_at", { ascending: false });
+
+			if (error) {
+				toast.error("Failed to fetch goals.");
+				return;
+			}
+
+			const updated = await Promise.all(
+				data.map(async (goal) => {
+					if (goal.type === "savings" && goal.wallet_id) {
+						const balance = await getWalletBalance(goal.wallet_id);
+						return { ...goal, current_amount: balance };
+					}
+					return goal;
+				})
+			);
+
+			setGoals(updated);
+		} catch {
+			toast.error("Failed to load goals.");
+		} finally {
 			setLoading(false);
-			return;
 		}
-
-		const { data, error } = await supabase
-			.from("goals")
-			.select("*")
-			.eq("user_id", user.id)
-			.order("created_at", { ascending: false });
-
-		if (error) {
-			toast.error("Failed to fetch goals.");
-			setLoading(false);
-			return;
-		}
-
-		const updated = await Promise.all(
-			data.map(async (goal) => {
-				if (goal.type === "savings" && goal.wallet_id) {
-					const balance = await getWalletBalance(goal.wallet_id);
-					return { ...goal, current_amount: balance };
-				}
-				return goal;
-			})
-		);
-
-		setGoals(updated);
-		setLoading(false);
 	};
 
 	useEffect(() => {
 		fetchGoals();
 	}, []);
 
-	const handleAddGoal = async (goalInput: any) => {
+	const handleAddGoal = async (goalInput: GoalInput) => {
+		if (
+			!goalInput ||
+			typeof goalInput.name !== "string" ||
+			!goalInput.name.trim() ||
+			!Number.isFinite(goalInput.targetAmount) ||
+			goalInput.targetAmount <= 0 ||
+			!Number.isFinite(goalInput.currentAmount) ||
+			(goalInput.type !== "savings" && goalInput.type !== "debt") ||
+			typeof goalInput.dueDate !== "string" ||
+			!goalInput.dueDate
+		) {
+			toast.error("Invalid goal data.");
+			return;
+		}
+
 		const {
 			data: { user },
 		} = await supabase.auth.getUser();
@@ -140,8 +178,23 @@ export default function GoalsPage() {
 		fetchGoals();
 	};
 
-	const handleUpdateGoal = async (goal: Goal) => {
-		if (goal.type === "savings") {
+	const handleUpdateGoal = async (goal: GoalUpdateInput) => {
+		const parsedCurrentAmount = Number(
+			goal.current_amount ?? goal.currentAmount ?? 0
+		);
+		const parsedTargetAmount = Number(goal.target_amount ?? goal.targetAmount ?? 0);
+		const dueDate = goal.due_date ?? goal.dueDate ?? "";
+
+		if (!Number.isFinite(parsedCurrentAmount) || !Number.isFinite(parsedTargetAmount) || !dueDate) {
+			toast.error("Invalid goal data.");
+			return;
+		}
+
+		const existingGoal = goals.find((g) => g.id === goal.id);
+		const currentAmountChanged =
+			existingGoal !== undefined && parsedCurrentAmount !== existingGoal.current_amount;
+
+		if (goal.type === "savings" && currentAmountChanged) {
 			toast.error("Savings goals are auto-tracked via wallet balance.");
 			return;
 		}
@@ -150,9 +203,9 @@ export default function GoalsPage() {
 			.from("goals")
 			.update({
 				name: goal.name,
-				target_amount: goal.target_amount,
-				current_amount: goal.current_amount,
-				due_date: goal.due_date,
+				target_amount: parsedTargetAmount,
+				current_amount: parsedCurrentAmount,
+				due_date: dueDate,
 				icon: goal.icon,
 				color: goal.color,
 			})
@@ -289,7 +342,12 @@ export default function GoalsPage() {
 			) : (
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 					{filteredGoals.map((goal, idx) => {
-						const pct = Math.min(100, (goal.current_amount / goal.target_amount) * 100);
+						const pct =
+							goal.target_amount <= 0
+								? goal.current_amount > 0
+									? 100
+									: 0
+								: Math.min(100, (goal.current_amount / goal.target_amount) * 100);
 						const daysLeft = getDaysRemaining(goal.due_date);
 						const isCompleted = pct >= 100;
 						const isOverdue = daysLeft <= 0 && !isCompleted;

@@ -15,34 +15,50 @@ export function formatCurrency(amount: number, currency = "USD") {
 }
 
 export function formatCompactCurrency(amount: number, currency = "USD") {
-  if (Math.abs(amount) >= 1_000_000) {
-    return `$${(amount / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(amount) < 1_000) {
+    return formatCurrency(amount, currency);
   }
-  if (Math.abs(amount) >= 1_000) {
-    return `$${(amount / 1_000).toFixed(1)}K`;
-  }
-  return formatCurrency(amount, currency);
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(amount);
+}
+
+function subtractMonthsClamped(source: Date, monthsToSubtract: number) {
+  const targetMonthIndex = source.getMonth() - monthsToSubtract;
+  const targetYear =
+    source.getFullYear() + Math.floor(targetMonthIndex / 12);
+  const targetMonth = ((targetMonthIndex % 12) + 12) % 12;
+  const lastDayOfTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const clampedDay = Math.min(source.getDate(), lastDayOfTargetMonth);
+  const result = new Date(source);
+  result.setFullYear(targetYear);
+  result.setMonth(targetMonth, clampedDay);
+  return result;
 }
 
 export function getDateRange(timePeriod: string) {
   const now = new Date();
-  const start = new Date();
+  const start = new Date(now);
 
   switch (timePeriod) {
     case "week":
       start.setDate(now.getDate() - 7);
       break;
     case "month":
-      start.setMonth(now.getMonth() - 1);
+      start.setTime(subtractMonthsClamped(now, 1).getTime());
       break;
     case "quarter":
-      start.setMonth(now.getMonth() - 3);
+      start.setTime(subtractMonthsClamped(now, 3).getTime());
       break;
     case "year":
       start.setFullYear(now.getFullYear() - 1);
       break;
     default:
-      start.setMonth(now.getMonth() - 1);
+      start.setTime(subtractMonthsClamped(now, 1).getTime());
   }
 
   return { start: start.toISOString(), end: now.toISOString() };

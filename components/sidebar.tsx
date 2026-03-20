@@ -131,7 +131,11 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
             const isActive = pathname === item.href;
 
             const linkContent = (
-              <Link href={item.href} key={item.href}>
+              <Link
+                href={item.href}
+                key={item.href}
+                aria-current={isActive ? "page" : undefined}
+              >
                 <div
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
@@ -140,7 +144,6 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                       : "text-muted-foreground hover:bg-accent hover:text-foreground",
                     collapsed && "justify-center px-2"
                   )}
-                  aria-current={isActive ? "page" : undefined}
                 >
                   <Icon
                     className={cn(

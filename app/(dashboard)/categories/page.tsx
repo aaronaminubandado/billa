@@ -61,7 +61,10 @@ export default function CategoriesPage() {
 				error: userError,
 			} = await supabase.auth.getUser();
 
-			if (userError || !user) return false;
+			if (userError || !user) {
+				toast.error(userError?.message || "Authentication error.");
+				return false;
+			}
 
 			const { data, error } = await supabase
 				.from("categories")
@@ -98,6 +101,7 @@ export default function CategoriesPage() {
 	const filteredCategories = categories.filter(
 		(c) => typeFilter === "all" || c.type === typeFilter
 	);
+	const hasFilters = typeFilter !== "all";
 
 	const handleDeleteCategory = async (category: Category) => {
 		if (category.transactionCount > 0) {
@@ -280,13 +284,26 @@ export default function CategoriesPage() {
 							<TagIcon className="h-7 w-7 text-muted-foreground" />
 						</div>
 						<h3 className="text-base font-semibold mb-1">No categories found</h3>
-						<p className="text-sm text-muted-foreground text-center max-w-sm mb-4">
-							Create categories to organize your transactions.
-						</p>
-						<Button onClick={() => setIsAddModalOpen(true)} size="sm" className="gap-2">
-							<PlusIcon className="h-3.5 w-3.5" />
-							Create Category
-						</Button>
+						{hasFilters ? (
+							<>
+								<p className="text-sm text-muted-foreground text-center max-w-sm mb-4">
+									No categories match the current filters.
+								</p>
+								<Button onClick={() => setTypeFilter("all")} size="sm" className="gap-2">
+									Clear Filters
+								</Button>
+							</>
+						) : (
+							<>
+								<p className="text-sm text-muted-foreground text-center max-w-sm mb-4">
+									Create categories to organize your transactions.
+								</p>
+								<Button onClick={() => setIsAddModalOpen(true)} size="sm" className="gap-2">
+									<PlusIcon className="h-3.5 w-3.5" />
+									Create Category
+								</Button>
+							</>
+						)}
 					</CardContent>
 				</Card>
 			) : (
@@ -331,7 +348,12 @@ export default function CategoriesPage() {
 
 									<DropdownMenu>
 										<DropdownMenuTrigger asChild>
-											<Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg">
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-7 w-7 rounded-lg"
+												aria-label="Open actions menu"
+											>
 												<MoreHorizontalIcon className="h-3.5 w-3.5" />
 											</Button>
 										</DropdownMenuTrigger>

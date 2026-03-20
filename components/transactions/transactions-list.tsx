@@ -30,6 +30,41 @@ interface TransactionsListProps {
 	onCancel: (transactionId: string) => void;
 }
 
+const toTranslucentBackground = (color?: string) => {
+	if (!color) return "hsl(var(--muted))";
+	const trimmed = color.trim();
+	const hex = trimmed.replace(/^#/, "");
+
+	if (/^[0-9A-Fa-f]{6}$/.test(hex)) {
+		const r = Number.parseInt(hex.slice(0, 2), 16);
+		const g = Number.parseInt(hex.slice(2, 4), 16);
+		const b = Number.parseInt(hex.slice(4, 6), 16);
+		return `rgba(${r}, ${g}, ${b}, 0.12)`;
+	}
+
+	if (/^[0-9A-Fa-f]{3}$/.test(hex)) {
+		const expandedHex = hex
+			.split("")
+			.map((char) => `${char}${char}`)
+			.join("");
+		const r = Number.parseInt(expandedHex.slice(0, 2), 16);
+		const g = Number.parseInt(expandedHex.slice(2, 4), 16);
+		const b = Number.parseInt(expandedHex.slice(4, 6), 16);
+		return `rgba(${r}, ${g}, ${b}, 0.12)`;
+	}
+
+	if (
+		/^rgba?\(/i.test(trimmed) ||
+		/^hsla?\(/i.test(trimmed) ||
+		trimmed.startsWith("var(") ||
+		/^[a-zA-Z]+$/.test(trimmed)
+	) {
+		return `color-mix(in srgb, ${trimmed} 20%, transparent)`;
+	}
+
+	return "hsl(var(--muted))";
+};
+
 export function TransactionsList({
 	transactions,
 	onEdit,
@@ -102,9 +137,7 @@ export function TransactionsList({
 										<div
 											className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
 											style={{
-												backgroundColor: transaction.category?.color
-													? `${transaction.category.color}20`
-													: "hsl(var(--muted))",
+												backgroundColor: toTranslucentBackground(transaction.category?.color),
 												color: transaction.category?.color || "hsl(var(--muted-foreground))",
 											}}
 										>

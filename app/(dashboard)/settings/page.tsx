@@ -40,21 +40,36 @@ export default function SettingsPage() {
   const [mounted, setMounted] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const supabase = createClient();
 
   useEffect(() => {
+    let isMounted = true;
     setMounted(true);
     const loadUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserEmail(user.email || "");
-        setDisplayName(user.email?.split("@")[0] || "");
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          toast.error(error.message || "Failed to load profile");
+          return;
+        }
+        if (user && isMounted) {
+          setUserEmail(user.email || "");
+          setDisplayName(
+            (user.user_metadata?.display_name as string) || user.email?.split("@")[0] || ""
+          );
+        }
+      } catch {
+        toast.error("Failed to load profile");
       }
     };
     loadUser();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const getInitials = (email: string) => {
@@ -86,6 +101,28 @@ export default function SettingsPage() {
     toast.success("Password updated successfully");
     setNewPassword("");
     setConfirmPassword("");
+  };
+
+  const handleSaveProfile = async () => {
+    const trimmedDisplayName = displayName.trim();
+    if (!trimmedDisplayName) {
+      toast.error("Display name cannot be empty");
+      return;
+    }
+
+    setIsSavingProfile(true);
+    const { error } = await supabase.auth.updateUser({
+      data: { display_name: trimmedDisplayName },
+    });
+    setIsSavingProfile(false);
+
+    if (error) {
+      toast.error(error.message || "Failed to save profile");
+      return;
+    }
+
+    setDisplayName(trimmedDisplayName);
+    toast.success("Profile updated successfully");
   };
 
   const tabItems = [
@@ -176,6 +213,11 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </CardContent>
+              <CardFooter>
+                <Button size="sm" onClick={handleSaveProfile} disabled={isSavingProfile}>
+                  {isSavingProfile ? "Saving..." : "Save Profile"}
+                </Button>
+              </CardFooter>
             </Card>
           </TabsContent>
 
@@ -334,7 +376,8 @@ export default function SettingsPage() {
                   <p className="text-xs text-muted-foreground">
                     Permanently delete your account and all associated data.
                   </p>
-                  <Button variant="destructive" size="sm">
+                  {/* TODO: wire this button to handleDeleteAccount once backend deletion is implemented. */}
+                  <Button variant="destructive" size="sm" disabled>
                     Delete Account
                   </Button>
                 </div>

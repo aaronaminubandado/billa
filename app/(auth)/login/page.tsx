@@ -133,13 +133,28 @@ export default function LoginPage() {
             </div>
 
             <div className="grid grid-cols-3 gap-2">
-              <Button variant="outline" size="sm" className="w-full h-9">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full h-9"
+                aria-label="Sign in with Google"
+              >
                 <FcGoogle className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="sm" className="w-full h-9">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full h-9"
+                aria-label="Sign in with Meta"
+              >
                 <FaMeta className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="sm" className="w-full h-9">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full h-9"
+                aria-label="Sign in with Twitter"
+              >
                 <FaTwitter className="h-4 w-4 text-blue-400" />
               </Button>
             </div>

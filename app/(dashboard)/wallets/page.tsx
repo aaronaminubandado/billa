@@ -52,7 +52,12 @@ export default function WalletsPage() {
 	const [currentWallet, setCurrentWallet] = useState<Wallet>();
 	const supabase = createClient();
 
-	const totalBalance = wallets.reduce((sum, w) => sum + w.balance, 0);
+	const totalsByCurrency = wallets.reduce<Record<string, number>>((acc, wallet) => {
+		const currency = wallet.currency || "USD";
+		acc[currency] = (acc[currency] || 0) + wallet.balance;
+		return acc;
+	}, {});
+	const totalByCurrencyEntries = Object.entries(totalsByCurrency);
 
 	const handleDeleteWallet = async (id: number) => {
 		const { data: txData, error: txError } = await supabase
@@ -189,9 +194,12 @@ export default function WalletsPage() {
 				return;
 			}
 
+			const walletData = { ...newWallet } as Partial<Wallet>;
+			delete walletData.id;
+			delete walletData.recentActivity;
 			const { error } = await supabase
 				.from("wallets")
-				.insert([{ ...newWallet, user_id: user.id }])
+				.insert([{ ...walletData, user_id: user.id }])
 				.select();
 
 			if (error) {
@@ -235,9 +243,21 @@ export default function WalletsPage() {
 							<p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
 								Total Balance
 							</p>
-							<p className="text-3xl font-bold tracking-tight text-primary">
-								{loading ? <Skeleton className="h-9 w-40" /> : formatCurrency(totalBalance)}
-							</p>
+							<div className="text-3xl font-bold tracking-tight text-primary">
+								{loading ? (
+									<Skeleton className="h-9 w-40" />
+								) : (
+									<div className="space-y-1">
+										{totalByCurrencyEntries.length > 0 ? (
+											totalByCurrencyEntries.map(([currency, amount]) => (
+												<div key={currency}>{formatCurrency(amount, currency)}</div>
+											))
+										) : (
+											<div>{formatCurrency(0)}</div>
+										)}
+									</div>
+								)}
+							</div>
 							{!loading && (
 								<p className="text-xs text-muted-foreground mt-0.5">
 									Across {wallets.length} account{wallets.length !== 1 ? "s" : ""}

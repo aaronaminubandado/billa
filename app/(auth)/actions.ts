@@ -3,13 +3,25 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import {
+  formSchema,
+  loginSchema,
+  parseAuthForm,
+} from "@/lib/validation";
 import { createClient } from "@/utils/supabase/server";
 
 export async function login(formData: FormData) {
-  const supabase = await createClient();
+  const parsed = parseAuthForm(loginSchema, {
+    email: String(formData.get("email") ?? ""),
+    password: String(formData.get("password") ?? ""),
+  });
 
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+  if (!parsed.success) {
+    return parsed.result;
+  }
+
+  const supabase = await createClient();
+  const { email, password } = parsed.data;
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -23,19 +35,41 @@ export async function login(formData: FormData) {
 }
 
 export async function signup(formData: FormData) {
+  const parsed = parseAuthForm(formSchema, {
+    username: String(formData.get("username") ?? ""),
+    email: String(formData.get("email") ?? ""),
+    password: String(formData.get("password") ?? ""),
+  });
+
+  if (!parsed.success) {
+    return parsed.result;
+  }
+
   const supabase = await createClient();
+  const { username, email, password } = parsed.data;
 
-  // type-casting here for convenience
-  // in practice, you should validate your inputs
-  const data = {
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
-  };
-
-  const { error } = await supabase.auth.signUp(data);
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { display_name: username },
+    },
+  });
 
   if (error) {
     return { success: false, error: error.message };
+  }
+
+  // Profile row may not insert if email confirmation is required (user null).
+  if (data.user) {
+    const { error: profileError } = await supabase.from("profiles").upsert({
+      id: data.user.id,
+      name: username,
+    });
+
+    if (profileError) {
+      console.error("Failed to create profile:", profileError.message);
+    }
   }
 
   revalidatePath("/", "layout");

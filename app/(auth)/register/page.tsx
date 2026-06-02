@@ -39,6 +39,7 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: SignupFormData) => {
     const formData = new FormData();
+    formData.append("username", data.username);
     formData.append("email", data.email);
     formData.append("password", data.password);
 

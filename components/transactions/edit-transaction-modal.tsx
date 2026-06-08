@@ -26,14 +26,13 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
+import type { Category, Transaction, Wallet } from "@/lib/types";
 
 interface EditTransactionModalProps {
 	isOpen: boolean;
 	onClose: () => void;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	transaction: any;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	onUpdate: (transaction: any) => void;
+	transaction: Transaction | null;
+	onUpdate: (transaction: Transaction) => void;
 }
 
 export function EditTransactionModal({
@@ -51,8 +50,8 @@ export function EditTransactionModal({
 	const [recurring, setRecurring] = useState(false);
 	const [recurringFrequency, setRecurringFrequency] = useState("monthly");
 	const [notes, setNotes] = useState("");
-	const [wallets, setWallets] = useState<any[]>([]);
-	const [categories, setCategories] = useState<any[]>([]);
+	const [wallets, setWallets] = useState<Wallet[]>([]);
+	const [categories, setCategories] = useState<Category[]>([]);
 	const supabase = createClient();
 
 	const isMobile = useMediaQuery("(max-width: 768px)");
@@ -63,11 +62,11 @@ export function EditTransactionModal({
 			setType(transaction.type || "expense");
 			setName(transaction.name || "");
 			setAmount(transaction.amount?.toString() || "");
-			setCategoryId((transaction.category_id ?? transaction.categoryId)?.toString() || "");
-			setWalletId((transaction.wallet_id ?? transaction.walletId)?.toString() || "");
+			setCategoryId(transaction.category_id?.toString() || "");
+			setWalletId(transaction.wallet_id?.toString() || "");
 			setDate(transaction.date || new Date().toISOString().split("T")[0]);
 			setRecurring(transaction.recurring || false);
-			setRecurringFrequency(transaction.recurring_frequency ?? transaction.recurringFrequency ?? "monthly");
+			setRecurringFrequency(transaction.recurring_frequency ?? "monthly");
 			setNotes(transaction.notes || "");
 		}
 	}, [transaction, isOpen]);
@@ -103,8 +102,9 @@ export function EditTransactionModal({
 
 				if (categoryError) throw categoryError;
 				setCategories(categoryData || []);
-			} catch (err: any) {
-				console.error("Error fetching data:", err.message);
+			} catch (err) {
+				const message = err instanceof Error ? err.message : "Unknown error";
+				console.error("Error fetching data:", message);
 			}
 		};
 
@@ -125,7 +125,11 @@ export function EditTransactionModal({
 			return;
 		}
 
-		const updatedTransaction = {
+		if (!transaction) {
+			return;
+		}
+
+		const updatedTransaction: Transaction = {
 			...transaction,
 			type,
 			name,
@@ -134,7 +138,7 @@ export function EditTransactionModal({
 			wallet_id: walletId,
 			date,
 			recurring,
-			recurring_frequency: recurring ? recurringFrequency : null,
+			recurring_frequency: recurring ? recurringFrequency : undefined,
 			notes,
 		};
 

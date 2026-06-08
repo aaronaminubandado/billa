@@ -9,9 +9,10 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import type { Transaction } from "@/lib/types";
 
 interface TransactionsSummaryProps {
-  transactions: any[];
+  transactions: Transaction[];
 }
 
 export function TransactionsSummary({

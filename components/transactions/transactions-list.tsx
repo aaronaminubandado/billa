@@ -23,10 +23,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import type { Transaction } from "@/lib/types";
 
 interface TransactionsListProps {
-	transactions: any[];
-	onEdit: (transaction: any) => void;
+	transactions: Transaction[];
+	onEdit: (transaction: Transaction) => void;
 	onCancel: (transactionId: string) => void;
 }
 
@@ -71,9 +72,10 @@ export function TransactionsList({
 	onCancel,
 }: TransactionsListProps) {
 	const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-	const [transactionToCancel, setTransactionToCancel] = useState<any>(null);
+	const [transactionToCancel, setTransactionToCancel] =
+		useState<Transaction | null>(null);
 
-	const handleCancelClick = (transaction: any) => {
+	const handleCancelClick = (transaction: Transaction) => {
 		setTransactionToCancel(transaction);
 		setCancelDialogOpen(true);
 	};

@@ -26,12 +26,12 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
+import type { Category, NewTransactionPayload, Wallet } from "@/lib/types";
 
 interface AddTransactionModalProps {
 	isOpen: boolean;
 	onClose: () => void;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	onAdd: (transaction: any) => void;
+	onAdd: (transaction: NewTransactionPayload) => void;
 }
 
 export function AddTransactionModal({
@@ -48,8 +48,8 @@ export function AddTransactionModal({
 	const [recurring, setRecurring] = useState(false);
 	const [recurringFrequency, setRecurringFrequency] = useState("monthly");
 	const [notes, setNotes] = useState("");
-	const [wallets, setWallets] = useState<any[]>([]);
-	const [categories, setCategories] = useState<any[]>([]);
+	const [wallets, setWallets] = useState<Wallet[]>([]);
+	const [categories, setCategories] = useState<Category[]>([]);
 	const supabase = createClient();
 
 	const isMobile = useMediaQuery("(max-width: 768px)");
@@ -91,8 +91,9 @@ export function AddTransactionModal({
 
 				if (categoryError) throw categoryError;
 				setCategories(categoryData || []);
-			} catch (err: any) {
-				console.error("Error fetching data:", err.message);
+			} catch (err) {
+				const message = err instanceof Error ? err.message : "Unknown error";
+				console.error("Error fetching data:", message);
 			}
 		};
 

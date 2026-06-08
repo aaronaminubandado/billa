@@ -24,22 +24,34 @@ import {
 } from "@/components/ui/tooltip";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
+import type {
+	Category,
+	NewTransactionPayload,
+	Transaction,
+	Wallet,
+} from "@/lib/types";
 
 export function TransactionsContent() {
-	const [transactions, setTransactions] = useState<any[]>([]);
-	const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
+	const [transactions, setTransactions] = useState<Transaction[]>([]);
+	const [filteredTransactions, setFilteredTransactions] = useState<
+		Transaction[]
+	>([]);
 	const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 	const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-	const [editingTransaction, setEditingTransaction] = useState<any>(null);
+	const [editingTransaction, setEditingTransaction] =
+		useState<Transaction | null>(null);
 	const [searchTerm, setSearchTerm] = useState("");
 	const [typeFilter, setTypeFilter] = useState("all");
 	const [categoryFilter, setCategoryFilter] = useState("all");
 	const [walletFilter, setWalletFilter] = useState("all");
-	const [categories, setCategories] = useState<any[]>([]);
-	const [wallets, setWallets] = useState<any[]>([]);
+	const [categories, setCategories] = useState<Category[]>([]);
+	const [wallets, setWallets] = useState<Wallet[]>([]);
 	const supabase = createClient();
 
-	const fetchTransactions = async (supabase: any, userId: string) => {
+	const fetchTransactions = async (
+		client: ReturnType<typeof createClient>,
+		userId: string
+	): Promise<Transaction[]> => {
 		try {
 			const { data, error } = await supabase
 				.from("transactions")
@@ -70,8 +82,7 @@ export function TransactionsContent() {
 				return [];
 			}
 
-			console.log("Transactions fetched:", data.length);
-			return data;
+			return (data ?? []) as Transaction[];
 		} catch (error) {
 			console.error("Unexpected error fetching transactions:", error);
 			toast.error(
@@ -168,7 +179,7 @@ export function TransactionsContent() {
 	}, [transactions, searchTerm, typeFilter, categoryFilter, walletFilter]);
 
 	// Add transaction function
-	const handleAddTransaction = async (newTransaction: any) => {
+	const handleAddTransaction = async (newTransaction: NewTransactionPayload) => {
 		try {
 			const {
 				data: { user },
@@ -210,10 +221,11 @@ export function TransactionsContent() {
 	};
 
 	// Edit transaction function
-	const handleEditTransaction = async (updatedTransaction: any) => {
+	const handleEditTransaction = async (updatedTransaction: Transaction) => {
 		try {
-			const { category, wallet, ...transactionColumns } =
-				updatedTransaction;
+			const { category, wallet, ...transactionColumns } = updatedTransaction;
+			void category;
+			void wallet;
 
 			const cleanedTransaction = {
 				...transactionColumns,
@@ -282,13 +294,13 @@ export function TransactionsContent() {
 				setTransactions(refreshedTransactions);
 				setFilteredTransactions(refreshedTransactions);
 			}
-		} catch (error) {
+		} catch {
 			toast.error("Unexpected error while canceling transaction.");
 		}
 	};
 
 	// Handle edit transaction
-	const handleEditClick = (transaction: any) => {
+	const handleEditClick = (transaction: Transaction) => {
 		setEditingTransaction(transaction);
 		setIsEditModalOpen(true);
 	};

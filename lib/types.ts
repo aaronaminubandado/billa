@@ -74,3 +74,23 @@ export interface WalletActivity {
 	amount: number;
 	date: string;
 }
+
+export type NewTransactionPayload = {
+	type: "income" | "expense";
+	name: string;
+	amount: number;
+	category_id: string;
+	wallet_id: string;
+	date: string;
+	recurring: boolean;
+	recurring_frequency: string | null;
+	notes: string;
+};
+
+export interface BudgetListItem {
+	id: number;
+	name: string;
+	amount: number;
+	used: number;
+	period: string;
+}

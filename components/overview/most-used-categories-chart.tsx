@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
+import React, { useMemo } from "react";
 import {
 	BarChart,
 	Bar,
@@ -12,22 +11,7 @@ import {
 	ResponsiveContainer,
 	Cell,
 } from "recharts";
-
-// TYPES
-interface Category {
-	id: string;
-	name: string;
-	color: string;
-	icon: string | null;
-}
-
-interface TransactionRow {
-	category_id: string | null;
-	amount: number;
-	type: "income" | "expense";
-	created_at: string;
-	categories: Category | null;
-}
+import type { DashboardTransaction } from "@/hooks/use-dashboard-transactions";
 
 export interface CategoryStat {
 	id: string;
@@ -39,73 +23,12 @@ export interface CategoryStat {
 	avgAmount: number;
 }
 
-// FETCH TRANSACTIONS + CATEGORIES
-const fetchCategoryStats = async (
-	supabase: ReturnType<typeof createClient>,
-	periodStart: string,
-	userId: string
-): Promise<TransactionRow[]> => {
-	const { data, error } = await supabase
-		.from("transactions")
-		.select(
-			`
-      category_id,
-      amount,
-      type,
-      created_at,
-      categories ( id, name, color, icon )
-    `
-		)
-		.gte("created_at", periodStart)
-		.eq("type", "expense")
-		.eq("user_id", userId);
+interface MostUsedCategoriesChartProps {
+	timePeriod: string;
+	transactions: DashboardTransaction[];
+	loading?: boolean;
+}
 
-	if (error) throw error;
-
-	return (data ?? []).map((row: any) => ({
-		...row,
-		categories: row.categories ?? null,
-	})) as TransactionRow[];
-};
-
-// COMPUTE AGGREGATED CATEGORY STATS
-const computeCategoryStats = (rows: TransactionRow[]): CategoryStat[] => {
-	const stats: Record<string, CategoryStat> = {};
-
-	for (const row of rows) {
-		const cat = row.categories;
-		if (!cat) continue;
-
-		if (!stats[cat.id]) {
-			stats[cat.id] = {
-				id: cat.id,
-				name: cat.name,
-				icon: cat.icon,
-				color: cat.color,
-				count: 0,
-				totalAmount: 0,
-				avgAmount: 0,
-			};
-		}
-
-		stats[cat.id].count++;
-
-		if (row.type === "expense") {
-			stats[cat.id].totalAmount += row.amount;
-		}
-	}
-
-	return Object.values(stats)
-		.map((cat) => ({
-			...cat,
-			avgAmount:
-				cat.count > 0 ? Math.round(cat.totalAmount / cat.count) : 0,
-		}))
-		.sort((a, b) => b.count - a.count)
-		.slice(0, 6);
-};
-
-// TIME RANGE HANDLER
 const getPeriodStart = (period: string): Date => {
 	const now = new Date();
 	const copy = new Date(now);
@@ -130,12 +53,52 @@ const getPeriodStart = (period: string): Date => {
 	return copy;
 };
 
+const computeCategoryStats = (
+	transactions: DashboardTransaction[],
+	timePeriod: string
+): CategoryStat[] => {
+	const periodStart = getPeriodStart(timePeriod).getTime();
+	const stats: Record<string, CategoryStat> = {};
+
+	for (const row of transactions) {
+		if (row.type !== "expense") continue;
+		if (new Date(row.created_at).getTime() < periodStart) continue;
+
+		const cat = row.categories;
+		if (!cat) continue;
+
+		if (!stats[cat.id]) {
+			stats[cat.id] = {
+				id: cat.id,
+				name: cat.name,
+				icon: cat.icon,
+				color: cat.color,
+				count: 0,
+				totalAmount: 0,
+				avgAmount: 0,
+			};
+		}
+
+		stats[cat.id].count++;
+		stats[cat.id].totalAmount += row.amount;
+	}
+
+	return Object.values(stats)
+		.map((cat) => ({
+			...cat,
+			avgAmount:
+				cat.count > 0 ? Math.round(cat.totalAmount / cat.count) : 0,
+		}))
+		.sort((a, b) => b.count - a.count)
+		.slice(0, 6);
+};
+
 const CustomTooltip = ({
 	active,
 	payload,
 }: {
 	active?: boolean;
-	payload?: any[];
+	payload?: Array<{ payload: CategoryStat }>;
 }) => {
 	if (active && payload && payload.length) {
 		const row = payload[0].payload;
@@ -160,49 +123,23 @@ const CustomTooltip = ({
 	return null;
 };
 
-// MAIN COMPONENT
-interface MostUsedCategoriesChartProps {
-	timePeriod: string;
-}
-
-const supabase = createClient();
-
 export function MostUsedCategoriesChart({
 	timePeriod,
+	transactions,
+	loading = false,
 }: MostUsedCategoriesChartProps) {
-	const [chartData, setChartData] = useState<CategoryStat[]>([]);
+	const chartData = useMemo(
+		() => computeCategoryStats(transactions, timePeriod),
+		[transactions, timePeriod]
+	);
 
-	useEffect(() => {
-		let cancelled = false;
-
-		const load = async () => {
-			try {
-				const {
-					data: { user },
-				} = await supabase.auth.getUser();
-				if (!user || cancelled) return;
-
-				const periodStart = getPeriodStart(timePeriod).toISOString();
-				const rows = await fetchCategoryStats(
-					supabase,
-					periodStart,
-					user.id
-				);
-				if (cancelled) return;
-
-				const stats = computeCategoryStats(rows);
-				setChartData(stats);
-			} catch (error) {
-				console.error("Failed to load category stats:", error);
-			}
-		};
-
-		load();
-
-		return () => {
-			cancelled = true;
-		};
-	}, [timePeriod]);
+	if (loading) {
+		return (
+			<div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+				Loading chart...
+			</div>
+		);
+	}
 
 	return (
 		<ResponsiveContainer width="100%" height="100%">

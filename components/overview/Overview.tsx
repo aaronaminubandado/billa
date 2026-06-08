@@ -29,6 +29,7 @@ import { IncomeVsExpensesChart } from "@/components/overview/income-vs-expenses-
 import { SpendingTrendChart } from "@/components/overview/spending-trend-chart";
 import { MostUsedCategoriesChart } from "@/components/overview/most-used-categories-chart";
 import { DashboardMetrics } from "@/components/overview/dashboard-metrics";
+import { useDashboardTransactions } from "@/hooks/use-dashboard-transactions";
 
 export default function Overview() {
   const [visibleCharts, setVisibleCharts] = useState({
@@ -40,6 +41,7 @@ export default function Overview() {
 
   const [timePeriod, setTimePeriod] = useState("month");
   const [showWidgetSettings, setShowWidgetSettings] = useState(false);
+  const { transactions, loading } = useDashboardTransactions(timePeriod);
 
   const toggleChart = (chartName: keyof typeof visibleCharts) => {
     setVisibleCharts((prev) => ({
@@ -81,7 +83,11 @@ export default function Overview() {
         </div>
       </div>
 
-      <DashboardMetrics timePeriod={timePeriod} />
+      <DashboardMetrics
+        timePeriod={timePeriod}
+        transactions={transactions}
+        loading={loading}
+      />
 
       {showWidgetSettings && (
         <Card className="animate-slide-up">
@@ -125,10 +131,20 @@ export default function Overview() {
                   <TabsTrigger value="bar" className="text-xs px-3 h-6">Bar</TabsTrigger>
                 </TabsList>
                 <TabsContent value="pie" className="h-[280px]">
-                  <CategorySpendingChart type="pie" timePeriod={timePeriod} />
+                  <CategorySpendingChart
+                    type="pie"
+                    timePeriod={timePeriod}
+                    transactions={transactions}
+                    loading={loading}
+                  />
                 </TabsContent>
                 <TabsContent value="bar" className="h-[280px]">
-                  <CategorySpendingChart type="bar" timePeriod={timePeriod} />
+                  <CategorySpendingChart
+                    type="bar"
+                    timePeriod={timePeriod}
+                    transactions={transactions}
+                    loading={loading}
+                  />
                 </TabsContent>
               </Tabs>
             </CardContent>
@@ -145,7 +161,11 @@ export default function Overview() {
             </CardHeader>
             <CardContent className="pt-0">
               <div className="h-[320px]">
-                <IncomeVsExpensesChart timePeriod={timePeriod} />
+                <IncomeVsExpensesChart
+                  timePeriod={timePeriod}
+                  transactions={transactions}
+                  loading={loading}
+                />
               </div>
             </CardContent>
           </Card>
@@ -161,7 +181,11 @@ export default function Overview() {
             </CardHeader>
             <CardContent className="pt-0">
               <div className="h-[300px]">
-                <SpendingTrendChart timePeriod={timePeriod} />
+                <SpendingTrendChart
+                  timePeriod={timePeriod}
+                  transactions={transactions}
+                  loading={loading}
+                />
               </div>
             </CardContent>
           </Card>
@@ -177,7 +201,11 @@ export default function Overview() {
             </CardHeader>
             <CardContent className="pt-0">
               <div className="h-[300px]">
-                <MostUsedCategoriesChart timePeriod={timePeriod} />
+                <MostUsedCategoriesChart
+                  timePeriod={timePeriod}
+                  transactions={transactions}
+                  loading={loading}
+                />
               </div>
             </CardContent>
           </Card>

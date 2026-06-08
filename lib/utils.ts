@@ -64,6 +64,36 @@ export function getDateRange(timePeriod: string) {
   return { start: start.toISOString(), end: now.toISOString() };
 }
 
+/** Widest date window needed by dashboard metrics + charts for one fetch. */
+export function getOverviewFetchRange(timePeriod: string) {
+  const { start: rangeStart, end } = getDateRange(timePeriod);
+  const now = new Date();
+  const candidates = [new Date(rangeStart)];
+
+  switch (timePeriod) {
+    case "week": {
+      const rolling = new Date(now);
+      rolling.setDate(now.getDate() - 7);
+      candidates.push(rolling);
+      break;
+    }
+    case "month":
+      candidates.push(new Date(now.getFullYear(), now.getMonth(), 1));
+      break;
+    case "quarter": {
+      const quarterStartMonth = now.getMonth() - (now.getMonth() % 3);
+      candidates.push(new Date(now.getFullYear(), quarterStartMonth, 1));
+      break;
+    }
+    case "year":
+      candidates.push(new Date(now.getFullYear(), 0, 1));
+      break;
+  }
+
+  const startMs = Math.min(...candidates.map((d) => d.getTime()));
+  return { start: new Date(startMs).toISOString(), end };
+}
+
 export function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString("en-US", {
     year: "numeric",

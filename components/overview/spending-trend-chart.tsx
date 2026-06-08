@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
+import React, { useMemo } from "react";
 import {
 	LineChart,
 	Line,
@@ -12,10 +11,8 @@ import {
 	Legend,
 	ResponsiveContainer,
 } from "recharts";
+import type { DashboardTransaction } from "@/hooks/use-dashboard-transactions";
 
-// -------------------------------
-// Types
-// -------------------------------
 interface Category {
 	id: string;
 	name: string;
@@ -23,21 +20,17 @@ interface Category {
 	icon: string | null;
 }
 
-interface TransactionRow {
-	amount: number;
-	type: "expense" | "income";
-	created_at: string;
-	categories: Category | null;
-}
-
 interface SpendingPoint {
 	name: string;
 	[key: string]: number | string;
 }
 
-// -------------------------------
-// Buckets
-// -------------------------------
+interface SpendingTrendChartProps {
+	timePeriod: string;
+	transactions: DashboardTransaction[];
+	loading?: boolean;
+}
+
 function normalize(d: Date) {
 	return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
@@ -110,141 +103,77 @@ function getBuckets(timePeriod: string) {
 	return buckets;
 }
 
-// -------------------------------
-// Supabase fetch
-// -------------------------------
-async function fetchTransactions(
-	supabase: ReturnType<typeof createClient>,
-	userId: string,
-	after: Date
-): Promise<TransactionRow[]> {
-	const { data, error } = await supabase
-		.from("transactions")
-		.select(
-			`
-      amount,
-      type,
-      created_at,
-      categories ( id, name, color, icon )
-    `
-		)
-		.gte("created_at", after.toISOString())
-		.eq("user_id", userId);
+function buildChartData(
+	transactions: DashboardTransaction[],
+	timePeriod: string
+): { chartData: SpendingPoint[]; categoryList: Category[] } {
+	const chartType = "expense" as const;
+	const buckets = getBuckets(timePeriod);
+	if (buckets.length === 0) {
+		return { chartData: [], categoryList: [] };
+	}
 
-	if (error) throw error;
+	const earliest = buckets[0].start;
+	const filteredRows = transactions.filter(
+		(t) =>
+			t.type === chartType &&
+			new Date(t.created_at) >= earliest &&
+			t.categories
+	);
 
-	return data.map((row: any) => ({
-		...row,
-		categories: row.categories ?? null,
-	}));
+	const categoryMap: Record<string, Category> = {};
+	filteredRows.forEach((r) => {
+		if (r.categories) categoryMap[r.categories.id] = r.categories;
+	});
+	const categories = Object.values(categoryMap);
+
+	const result: SpendingPoint[] = buckets.map((b) => {
+		const point: SpendingPoint = { name: b.label };
+		categories.forEach((c) => (point[c.name] = 0));
+		point.Total = 0;
+		return point;
+	});
+
+	filteredRows.forEach((row) => {
+		const cat = row.categories;
+		if (!cat) return;
+
+		const date = new Date(row.created_at);
+		const bucketIndex = buckets.findIndex(
+			(b) => date >= b.start && date <= b.end
+		);
+
+		if (bucketIndex >= 0) {
+			result[bucketIndex][cat.name] =
+				Number(result[bucketIndex][cat.name]) + row.amount;
+			result[bucketIndex].Total =
+				Number(result[bucketIndex].Total) + row.amount;
+		}
+	});
+
+	return { chartData: result, categoryList: categories };
 }
 
-// -------------------------------
-// Component
-// -------------------------------
-interface SpendingTrendChartProps {
-	timePeriod: string;
-}
+export function SpendingTrendChart({
+	timePeriod,
+	transactions,
+	loading = false,
+}: SpendingTrendChartProps) {
+	const { chartData, categoryList } = useMemo(
+		() => buildChartData(transactions, timePeriod),
+		[transactions, timePeriod]
+	);
 
-export function SpendingTrendChart({ timePeriod }: SpendingTrendChartProps) {
-	const supabase = createClient();
-	const [chartType, setChartType] = useState<"expense" | "income">("expense");
-	const [chartData, setChartData] = useState<SpendingPoint[]>([]);
-	const [categoryList, setCategoryList] = useState<Category[]>([]);
-
-	useEffect(() => {
-		const load = async () => {
-			try {
-				const {
-					data: { user },
-				} = await supabase.auth.getUser();
-				if (!user) return;
-
-				const buckets = getBuckets(timePeriod);
-				const earliest = buckets[0].start;
-
-				const rows = await fetchTransactions(
-					supabase,
-					user.id,
-					earliest
-				);
-
-				// Filter based on toggle (income/expense)
-				const filteredRows = rows.filter((t) => t.type === chartType);
-
-				// Discover categories dynamically
-				const categoryMap: Record<string, Category> = {};
-				filteredRows.forEach((r) => {
-					if (r.categories)
-						categoryMap[r.categories.id] = r.categories;
-				});
-				const categories = Object.values(categoryMap);
-				setCategoryList(categories);
-
-				// Base dataset
-				const result: SpendingPoint[] = buckets.map((b) => {
-					const point: SpendingPoint = { name: b.label };
-					categories.forEach((c) => (point[c.name] = 0));
-					point.Total = 0;
-					return point;
-				});
-
-				// Fill dataset
-				filteredRows.forEach((row) => {
-					const cat = row.categories;
-					if (!cat) return;
-
-					const date = new Date(row.created_at);
-
-					const bucketIndex = buckets.findIndex(
-						(b) => date >= b.start && date <= b.end
-					);
-
-					if (bucketIndex >= 0) {
-						result[bucketIndex][cat.name] =
-							Number(result[bucketIndex][cat.name]) + row.amount;
-
-						result[bucketIndex].Total =
-							Number(result[bucketIndex].Total) + row.amount;
-					}
-				});
-
-				setChartData(result);
-			} catch (error) {
-				console.error("Error");
-			}
-		};
-
-		load();
-	}, [timePeriod, chartType]);
+	if (loading) {
+		return (
+			<div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+				Loading chart...
+			</div>
+		);
+	}
 
 	return (
 		<div className="flex flex-col gap-3 w-full h-full">
-			{/* Toggle */}
-			{/* <div className="flex gap-2 mb-2">
-				<button
-					onClick={() => setChartType("expense")}
-					className={`px-3 py-1 rounded ${
-						chartType === "expense"
-							? "bg-blue-600 text-white"
-							: "bg-gray-200"
-					}`}
-				>
-					Expenses
-				</button>
-
-				<button
-					onClick={() => setChartType("income")}
-					className={`px-3 py-1 rounded ${
-						chartType === "income"
-							? "bg-blue-600 text-white"
-							: "bg-gray-200"
-					}`}
-				>
-					Income
-				</button>
-			</div> */}
-
 			<ResponsiveContainer width="100%" height="100%">
 				<LineChart data={chartData}>
 					<CartesianGrid strokeDasharray="3 3" />

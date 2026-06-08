@@ -118,7 +118,7 @@ export default function BudgetPage() {
 			};
 
 			// Check if category group already exists
-			let group = grouped.find((g) => g.category.id === cat.id);
+			const group = grouped.find((g) => g.category.id === cat.id);
 			if (group) {
 				group.budgets.push(budgetItem);
 			} else {
@@ -248,7 +248,7 @@ export default function BudgetPage() {
 		if (!user) return 0;
 
 		// Compute DATE RANGE for this budget
-		let rangeStart = new Date(start_date);
+		const rangeStart = new Date(start_date);
 		let rangeEnd = new Date();
 
 		switch (period) {

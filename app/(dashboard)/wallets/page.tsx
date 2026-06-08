@@ -155,6 +155,7 @@ export default function WalletsPage() {
 			}
 
 			const { id, recentActivity, ...rest } = updatedWallet;
+			void recentActivity;
 			const walletData = {
 				...rest,
 				user_id: user.id,

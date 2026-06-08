@@ -20,7 +20,6 @@ import {
   SettingsIcon,
   MoonIcon,
   SunIcon,
-  SearchIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { NotificationsPopover } from "@/components/notifications/notifications-popover";

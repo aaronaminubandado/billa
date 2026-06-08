@@ -2,12 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -141,6 +136,7 @@ export default function CategoriesPage() {
 			}
 
 			const { id, transactionCount, ...rest } = updatedCategory;
+			void transactionCount;
 			const { error } = await supabase
 				.from("categories")
 				.update({ ...rest, user_id: user.id })

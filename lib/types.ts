@@ -88,7 +88,7 @@ export type NewTransactionPayload = {
 };
 
 export interface BudgetListItem {
-	id: number;
+	id: string;
 	name: string;
 	amount: number;
 	used: number;

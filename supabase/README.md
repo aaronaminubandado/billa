@@ -15,7 +15,7 @@ This folder tracks Supabase schema and Row Level Security for the Billa project.
 ## Workflow (inventory first)
 
 ```
-inventory_remote_db.sql → db_inventory.md → 0000_schema → 0000b_drop_legacy_policies → 0001_rls → 0002_wallet_balance_from_transactions → audit_rls.sql → rls_audit.md
+inventory_remote_db.sql → db_inventory.md → 0000_schema → 0000b_drop_legacy_policies → 0001_rls → 0002_wallet_balance_from_transactions → 0003_schema_reconcile → audit_rls.sql → rls_audit.md
 ```
 
 Do **not** run migrations until [`audits/2026-06-02_db_inventory.md`](audits/2026-06-02_db_inventory.md) gap matrix is complete.

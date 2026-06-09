@@ -1,6 +1,6 @@
 # Security checklist — Billa Supabase
 
-Manual steps that cannot be done from this repo.
+Manual steps that cannot be done from this repo alone.
 
 ## Rotate database password (P0)
 
@@ -10,7 +10,9 @@ If `DB_PASSWORD` was ever stored locally (e.g. in `.env.local`):
 2. Click **Reset database password**
 3. Save the new password in your password manager only — **do not commit**
 4. Update any local tools that connect directly to Postgres (not needed for Next.js app using anon key + RLS)
-5. Confirm `.env.local` no longer contains `DB_PASSWORD` unless required; add to `.gitignore` (already ignored)
+5. Remove `DB_PASSWORD` from `.env.local` — the Next.js app only needs the anon key
+
+**Repo action completed:** `.env.example` documents required vars only; `.env.local` should not contain `DB_PASSWORD`.
 
 ## Verify no service_role in client
 
@@ -19,4 +21,10 @@ If `DB_PASSWORD` was ever stored locally (e.g. in `.env.local`):
 
 ## After RLS migrations
 
-Re-run [`scripts/audit_rls.sql`](scripts/audit_rls.sql) and complete [`audits/2026-06-02_rls_audit.md`](audits/2026-06-02_rls_audit.md).
+Run automated verification (requires direct Postgres URL):
+
+```bash
+DATABASE_URL='postgresql://postgres:[password]@db.[ref].supabase.co:5432/postgres' pnpm verify:rls
+```
+
+Or run [`scripts/audit_rls.sql`](scripts/audit_rls.sql) manually in the SQL Editor and complete [`audits/2026-06-02_rls_audit.md`](audits/2026-06-02_rls_audit.md).

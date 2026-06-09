@@ -35,35 +35,16 @@ import { toast } from "sonner";
 import { formatCurrency, getDaysRemaining } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface Goal {
-	id: number;
-	name: string;
-	target_amount: number;
-	current_amount: number;
-	due_date: string;
-	type: "savings" | "debt";
-	wallet_id: number | null;
-	icon: string;
-	color: string;
-}
-
-interface GoalInput {
-	name: string;
-	type: "savings" | "debt";
-	targetAmount: number;
-	currentAmount: number;
-	dueDate: string;
-	icon: string;
-	color: string;
-	wallet_id?: number | null;
-}
-
-type GoalUpdateInput = Goal & {
-	targetAmount?: number;
-	currentAmount?: number;
-	dueDate?: string;
-};
+import {
+	createGoal,
+	deleteGoal,
+	listGoalsWithWalletBalances,
+	updateGoal,
+	type GoalInput,
+	type GoalUpdateInput,
+} from "@/lib/data/goals";
+import type { Goal } from "@/lib/types";
+import { AuthRequiredError } from "@/lib/data/auth";
 
 export default function GoalsPage() {
 	const supabase = createClient();
@@ -74,54 +55,16 @@ export default function GoalsPage() {
 	const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 	const [currentGoal, setCurrentGoal] = useState<Goal | null>(null);
 
-	const getWalletBalance = async (walletId: number) => {
-		const { data, error } = await supabase
-			.from("transactions")
-			.select("amount")
-			.eq("wallet_id", walletId);
-
-		if (error) {
-			console.error("Failed to fetch wallet balance:", error);
-			throw error;
-		}
-		return data.reduce((s, t) => s + Number(t.amount), 0);
-	};
-
 	const fetchGoals = async () => {
 		try {
-			const {
-				data: { user },
-			} = await supabase.auth.getUser();
-
-			if (!user) {
-				toast.error("You must be logged in.");
-				return;
+			const data = await listGoalsWithWalletBalances(supabase);
+			setGoals(data);
+		} catch (error) {
+			if (error instanceof AuthRequiredError) {
+				toast.error(error.message);
+			} else {
+				toast.error("Failed to load goals.");
 			}
-
-			const { data, error } = await supabase
-				.from("goals")
-				.select("*")
-				.eq("user_id", user.id)
-				.order("created_at", { ascending: false });
-
-			if (error) {
-				toast.error("Failed to fetch goals.");
-				return;
-			}
-
-			const updated = await Promise.all(
-				data.map(async (goal) => {
-					if (goal.type === "savings" && goal.wallet_id) {
-						const balance = await getWalletBalance(goal.wallet_id);
-						return { ...goal, current_amount: balance };
-					}
-					return goal;
-				})
-			);
-
-			setGoals(updated);
-		} catch {
-			toast.error("Failed to load goals.");
 		} finally {
 			setLoading(false);
 		}
@@ -147,35 +90,14 @@ export default function GoalsPage() {
 			return;
 		}
 
-		const {
-			data: { user },
-		} = await supabase.auth.getUser();
-
-		if (!user) {
-			toast.error("Not authenticated");
-			return;
-		}
-
-		const { error } = await supabase.from("goals").insert({
-			user_id: user.id,
-			wallet_id: goalInput.type === "savings" ? goalInput.wallet_id : null,
-			name: goalInput.name,
-			target_amount: goalInput.targetAmount,
-			current_amount: goalInput.type === "savings" ? 0 : goalInput.currentAmount,
-			due_date: goalInput.dueDate,
-			icon: goalInput.icon,
-			color: goalInput.color,
-			type: goalInput.type,
-		});
-
-		if (error) {
+		try {
+			await createGoal(supabase, goalInput);
+			toast.success("Goal added!");
+			setIsAddModalOpen(false);
+			fetchGoals();
+		} catch {
 			toast.error("Failed to add goal");
-			return;
 		}
-
-		toast.success("Goal added!");
-		setIsAddModalOpen(false);
-		fetchGoals();
 	};
 
 	const handleUpdateGoal = async (goal: GoalUpdateInput) => {
@@ -199,36 +121,24 @@ export default function GoalsPage() {
 			return;
 		}
 
-		const { error } = await supabase
-			.from("goals")
-			.update({
-				name: goal.name,
-				target_amount: parsedTargetAmount,
-				current_amount: parsedCurrentAmount,
-				due_date: dueDate,
-				icon: goal.icon,
-				color: goal.color,
-			})
-			.eq("id", goal.id);
-
-		if (error) {
+		try {
+			await updateGoal(supabase, goal);
+			toast.success("Goal updated!");
+			setIsEditModalOpen(false);
+			fetchGoals();
+		} catch {
 			toast.error("Failed to update goal");
-			return;
 		}
-
-		toast.success("Goal updated!");
-		setIsEditModalOpen(false);
-		fetchGoals();
 	};
 
-	const handleDeleteGoal = async (id: number) => {
-		const { error } = await supabase.from("goals").delete().eq("id", id);
-		if (error) {
+	const handleDeleteGoal = async (id: string) => {
+		try {
+			await deleteGoal(supabase, id);
+			toast.success("Goal deleted!");
+			fetchGoals();
+		} catch {
 			toast.error("Failed to delete goal.");
-			return;
 		}
-		toast.success("Goal deleted!");
-		fetchGoals();
 	};
 
 	const filteredGoals = goals.filter((g) => {

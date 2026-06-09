@@ -8,7 +8,7 @@ import type { BudgetListItem } from "@/lib/types";
 
 interface BudgetCategoryGroupProps {
 	category: {
-		id: number;
+		id: string;
 		name: string;
 		icon: string;
 		color: string;

@@ -28,7 +28,7 @@ interface NewBudgetInput {
 }
 
 interface BudgetCategory {
-	id: number;
+	id: string;
 	name: string;
 	icon: string;
 	color: string;

@@ -30,15 +30,16 @@ import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+	createCategory,
+	deleteCategory,
+	listCategoriesWithCounts,
+	updateCategory,
+	type CategoryWithCount,
+} from "@/lib/data/categories";
+import { AuthRequiredError } from "@/lib/data/auth";
 
-interface Category {
-	id: number;
-	name: string;
-	type: string;
-	color: string;
-	icon: string;
-	transactionCount: number;
-}
+type Category = CategoryWithCount;
 
 export default function CategoriesPage() {
 	const [categories, setCategories] = useState<Category[]>([]);
@@ -51,38 +52,15 @@ export default function CategoriesPage() {
 
 	const fetchCategories = async () => {
 		try {
-			const {
-				data: { user },
-				error: userError,
-			} = await supabase.auth.getUser();
-
-			if (userError || !user) {
-				toast.error(userError?.message || "Authentication error.");
-				return false;
-			}
-
-			const { data, error } = await supabase
-				.from("categories")
-				.select(`
-					id, name, type, color, icon,
-					transactions:transactions(count)
-				`)
-				.eq("user_id", user.id);
-
-			if (error) {
-				toast.error("Failed to load categories");
-				return false;
-			}
-
-			const formatted = data.map((category) => ({
-				...category,
-				transactionCount: category.transactions?.[0]?.count || 0,
-			}));
-
-			setCategories(formatted);
+			const data = await listCategoriesWithCounts(supabase);
+			setCategories(data);
 			return true;
-		} catch {
-			toast.error("Unexpected error loading categories");
+		} catch (error) {
+			if (error instanceof AuthRequiredError) {
+				toast.error(error.message);
+			} else {
+				toast.error("Unexpected error loading categories");
+			}
 			return false;
 		} finally {
 			setLoading(false);
@@ -104,18 +82,13 @@ export default function CategoriesPage() {
 			return;
 		}
 
-		const { error } = await supabase
-			.from("categories")
-			.delete()
-			.eq("id", category.id);
-
-		if (error) {
+		try {
+			await deleteCategory(supabase, String(category.id));
+			toast.success("Category deleted!");
+			await fetchCategories();
+		} catch {
 			toast.error("Failed to delete category.");
-			return;
 		}
-
-		toast.success("Category deleted!");
-		await fetchCategories();
 	};
 
 	const handleEditClick = (category: Category) => {
@@ -125,65 +98,46 @@ export default function CategoriesPage() {
 
 	const handleUpdateCategory = async (updatedCategory: Category) => {
 		try {
-			const {
-				data: { user },
-				error: userError,
-			} = await supabase.auth.getUser();
-
-			if (userError || !user) {
-				toast.error("Authentication error.");
-				return;
-			}
-
 			const { id, transactionCount, ...rest } = updatedCategory;
 			void transactionCount;
-			const { error } = await supabase
-				.from("categories")
-				.update({ ...rest, user_id: user.id })
-				.eq("id", id)
-				.eq("user_id", user.id)
-				.select();
-
-			if (error) {
-				toast.error(`Failed to update category: ${error.message}`);
-				return;
-			}
+			await updateCategory(supabase, {
+				id: String(id),
+				name: rest.name,
+				type: rest.type,
+				color: rest.color,
+				icon: rest.icon,
+			});
 
 			setIsEditModalOpen(false);
 			const success = await fetchCategories();
 			if (success) toast.success("Category updated!");
-		} catch {
-			toast.error("An unexpected error occurred.");
+		} catch (error) {
+			if (error instanceof AuthRequiredError) {
+				toast.error(error.message);
+			} else {
+				toast.error("An unexpected error occurred.");
+			}
 		}
 	};
 
 	const handleAddCategory = async (newCategory: Category) => {
 		try {
-			const {
-				data: { user },
-				error: userError,
-			} = await supabase.auth.getUser();
-
-			if (userError || !user) {
-				toast.error("Authentication error.");
-				return;
-			}
-
-			const { error } = await supabase
-				.from("categories")
-				.insert([{ ...newCategory, user_id: user.id }])
-				.select();
-
-			if (error) {
-				toast.error(`Failed to add category: ${error.message}`);
-				return;
-			}
+			await createCategory(supabase, {
+				name: newCategory.name,
+				type: newCategory.type,
+				color: newCategory.color,
+				icon: newCategory.icon,
+			});
 
 			setIsAddModalOpen(false);
 			const success = await fetchCategories();
 			if (success) toast.success("Category added!");
-		} catch {
-			toast.error("An unexpected error occurred.");
+		} catch (error) {
+			if (error instanceof AuthRequiredError) {
+				toast.error(error.message);
+			} else {
+				toast.error("An unexpected error occurred.");
+			}
 		}
 	};
 

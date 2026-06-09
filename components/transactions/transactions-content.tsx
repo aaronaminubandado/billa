@@ -30,6 +30,15 @@ import type {
 	Transaction,
 	Wallet,
 } from "@/lib/types";
+import {
+	cancelTransaction,
+	insertTransaction,
+	listCategoriesForUser,
+	listTransactionsWithRelations,
+	listWalletsForUser,
+	updateTransaction,
+} from "@/lib/data/transactions";
+import { AuthRequiredError } from "@/lib/data/auth";
 
 export function TransactionsContent() {
 	const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -48,91 +57,40 @@ export function TransactionsContent() {
 	const [wallets, setWallets] = useState<Wallet[]>([]);
 	const supabase = createClient();
 
-	const fetchTransactions = async (
-		client: ReturnType<typeof createClient>,
-		userId: string
-	): Promise<Transaction[]> => {
+	const refreshTransactions = async () => {
 		try {
-			const { data, error } = await supabase
-				.from("transactions")
-				.select(
-					`
-        *,
-        category:categories (
-          id,
-          name,
-          icon,
-          color
-        ),
-        wallet:wallets (
-          id,
-          name,
-          type,
-          balance,
-          color
-        )
-      `
-				)
-				.eq("user_id", userId)
-				.order("date", { ascending: false });
-
-			if (error) {
-				console.error("Error fetching transactions:", error.message);
-				toast.error("Failed to fetch transactions. Please try again.");
-				return [];
-			}
-
-			return (data ?? []) as Transaction[];
+			return await listTransactionsWithRelations(supabase);
 		} catch (error) {
-			console.error("Unexpected error fetching transactions:", error);
-			toast.error(
-				"An unexpected error occurred while fetching transactions."
-			);
+			if (error instanceof AuthRequiredError) {
+				toast.error(error.message);
+			} else {
+				toast.error("Failed to fetch transactions. Please try again.");
+			}
 			return [];
 		}
 	};
 
-	// Initialize with sample data
 	useEffect(() => {
 		const loadInitialData = async () => {
-			const {
-				data: { user },
-				error,
-			} = await supabase.auth.getUser();
+			try {
+				const [fetchedTransactions, fetchedCategories, fetchedWallets] =
+					await Promise.all([
+						listTransactionsWithRelations(supabase),
+						listCategoriesForUser(supabase),
+						listWalletsForUser(supabase),
+					]);
 
-			if (error || !user) {
-				toast.error("Authentication failed. Please log in again.");
-				return;
+				setCategories(fetchedCategories);
+				setWallets(fetchedWallets);
+				setTransactions(fetchedTransactions);
+				setFilteredTransactions(fetchedTransactions);
+			} catch (error) {
+				if (error instanceof AuthRequiredError) {
+					toast.error(error.message);
+				} else {
+					toast.error("Authentication failed. Please log in again.");
+				}
 			}
-
-			const [fetchedTransactions, categoryRes, walletRes] =
-				await Promise.all([
-					fetchTransactions(supabase, user.id),
-
-					supabase
-						.from("categories")
-						.select("*")
-						.eq("user_id", user.id),
-
-					supabase.from("wallets").select("*").eq("user_id", user.id),
-				]);
-
-			if (categoryRes.error) {
-				toast.error("Failed to load categories.");
-				console.error(categoryRes.error.message);
-			} else {
-				setCategories(categoryRes.data || []);
-			}
-
-			if (walletRes.error) {
-				toast.error("Failed to load wallets.");
-				console.error(walletRes.error.message);
-			} else {
-				setWallets(walletRes.data || []);
-			}
-
-			setTransactions(fetchedTransactions);
-			setFilteredTransactions(fetchedTransactions);
 		};
 
 		loadInitialData();
@@ -181,37 +139,10 @@ export function TransactionsContent() {
 	// Add transaction function
 	const handleAddTransaction = async (newTransaction: NewTransactionPayload) => {
 		try {
-			const {
-				data: { user },
-				error: userError,
-			} = await supabase.auth.getUser();
-			if (userError || !user) {
-				toast.error("Authentication error. Please log in again.");
-				return;
-			}
-
-			const transactionToInsert = {
-				...newTransaction,
-				user_id: user.id,
-			};
-
-			const { error } = await supabase
-				.from("transactions")
-				.insert([transactionToInsert]);
-
-			if (error) {
-				toast.error(`Failed to add transaction`);
-				return;
-			}
-
+			await insertTransaction(supabase, newTransaction);
 			toast.success("Transaction added successfully.");
 			setIsAddModalOpen(false);
-
-			//refresh transactions from the db
-			const refreshedTransactions = await fetchTransactions(
-				supabase,
-				user.id
-			);
+			const refreshedTransactions = await refreshTransactions();
 			setTransactions(refreshedTransactions);
 			setFilteredTransactions(refreshedTransactions);
 		} catch (error) {
@@ -220,80 +151,28 @@ export function TransactionsContent() {
 		}
 	};
 
-	// Edit transaction function
 	const handleEditTransaction = async (updatedTransaction: Transaction) => {
 		try {
-			const { category, wallet, ...transactionColumns } = updatedTransaction;
-			void category;
-			void wallet;
-
-			const cleanedTransaction = {
-				...transactionColumns,
-				category_id: updatedTransaction.category_id,
-				wallet_id: updatedTransaction.wallet_id,
-			};
-
-			const { error } = await supabase
-				.from("transactions")
-				.update(cleanedTransaction)
-				.eq("id", updatedTransaction.id);
-
-			if (error) {
-				toast.error(`Failed to update transaction`);
-				return;
-			}
-
+			await updateTransaction(supabase, updatedTransaction);
 			toast.success("Transaction updated successfully.");
 			setIsEditModalOpen(false);
 			setEditingTransaction(null);
-
-			//Refresh transactions from the database
-			//NOTE: Try to find a better way to do this
-			const {
-				data: { user },
-			} = await supabase.auth.getUser();
-			if (user) {
-				const refreshedTransactions = await fetchTransactions(
-					supabase,
-					user.id
-				);
-				setTransactions(refreshedTransactions);
-				setFilteredTransactions(refreshedTransactions);
-			}
+			const refreshedTransactions = await refreshTransactions();
+			setTransactions(refreshedTransactions);
+			setFilteredTransactions(refreshedTransactions);
 		} catch (error) {
 			console.error(error);
 			toast.error("Unexpected error while updating transactions");
 		}
 	};
 
-	//Cancel transaction from DB
 	const handleCancelTransaction = async (transactionId: string) => {
 		try {
-			const { error } = await supabase
-				.from("transactions")
-				.update({ status: "canceled" }) // <-- NEW: update status
-				.eq("id", transactionId);
-
-			if (error) {
-				toast.error(`Failed to cancel transaction`);
-				return;
-			}
-
+			await cancelTransaction(supabase, transactionId);
 			toast.success("Transaction canceled successfully.");
-
-			// Refresh list
-			const {
-				data: { user },
-			} = await supabase.auth.getUser();
-
-			if (user) {
-				const refreshedTransactions = await fetchTransactions(
-					supabase,
-					user.id
-				);
-				setTransactions(refreshedTransactions);
-				setFilteredTransactions(refreshedTransactions);
-			}
+			const refreshedTransactions = await refreshTransactions();
+			setTransactions(refreshedTransactions);
+			setFilteredTransactions(refreshedTransactions);
 		} catch {
 			toast.error("Unexpected error while canceling transaction.");
 		}

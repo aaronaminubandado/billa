@@ -25,24 +25,16 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+	createWallet,
+	deleteWallet,
+	listWalletsWithRecentActivity,
+	updateWallet,
+	type WalletWithActivity,
+} from "@/lib/data/wallets";
+import { AuthRequiredError } from "@/lib/data/auth";
 
-interface WalletActivity {
-	type: string;
-	id: number;
-	name: string;
-	amount: number;
-	date: string;
-}
-
-interface Wallet {
-	id: number;
-	name: string;
-	balance: number;
-	currency: string;
-	type: string;
-	icon: string;
-	recentActivity: WalletActivity[];
-}
+type Wallet = WalletWithActivity;
 
 export default function WalletsPage() {
 	const [wallets, setWallets] = useState<Wallet[]>([]);
@@ -59,30 +51,18 @@ export default function WalletsPage() {
 	}, {});
 	const totalByCurrencyEntries = Object.entries(totalsByCurrency);
 
-	const handleDeleteWallet = async (id: number) => {
-		const { data: txData, error: txError } = await supabase
-			.from("transactions")
-			.select("id")
-			.eq("wallet_id", id)
-			.limit(1);
-
-		if (txError) {
-			toast.error("Could not verify wallet activity. Try again.");
-			return;
-		}
-
-		if (txData && txData.length > 0) {
-			toast.error("Remove or reassign transactions before deleting this wallet.");
-			return;
-		}
-
-		const { error } = await supabase.from("wallets").delete().eq("id", id);
-		if (error) {
+	const handleDeleteWallet = async (id: string) => {
+		try {
+			await deleteWallet(supabase, id);
+			toast.success("Wallet deleted successfully!");
+			await fetchWallets();
+		} catch (error) {
+			if (error instanceof Error && error.message === "WALLET_HAS_TRANSACTIONS") {
+				toast.error("Remove or reassign transactions before deleting this wallet.");
+				return;
+			}
 			toast.error("An error occurred. Try again later");
-			return;
 		}
-		toast.success("Wallet deleted successfully!");
-		await fetchWallets();
 	};
 
 	const handleEditClick = (wallet: Wallet) => {
@@ -92,47 +72,8 @@ export default function WalletsPage() {
 
 	const fetchWallets = async () => {
 		try {
-			const {
-				data: { user },
-				error: userError,
-			} = await supabase.auth.getUser();
-
-			if (userError || !user) return false;
-
-			const { data: walletData, error: walletError } = await supabase
-				.from("wallets")
-				.select("*")
-				.eq("user_id", user.id);
-
-			if (walletError) {
-				toast.error("Failed to load wallets");
-				return false;
-			}
-
-			const walletsWithActivity = await Promise.all(
-				walletData.map(async (wallet) => {
-					const { data: txData } = await supabase
-						.from("transactions")
-						.select("id, name, amount, type, created_at")
-						.eq("wallet_id", wallet.id)
-						.order("created_at", { ascending: false })
-						.limit(3);
-
-					return {
-						...wallet,
-						recentActivity:
-							txData?.map((item) => ({
-								id: item.id,
-								name: item.name,
-								amount: item.amount,
-								type: item.type,
-								date: item.created_at,
-							})) ?? [],
-					};
-				})
-			);
-
-			setWallets(walletsWithActivity);
+			const data = await listWalletsWithRecentActivity(supabase);
+			setWallets(data);
 			return true;
 		} catch {
 			toast.error("Unexpected error loading wallets");
@@ -144,75 +85,48 @@ export default function WalletsPage() {
 
 	const handleUpdateWallet = async (updatedWallet: Wallet) => {
 		try {
-			const {
-				data: { user },
-				error: userError,
-			} = await supabase.auth.getUser();
-
-			if (userError || !user) {
-				toast.error("Authentication error. Please try logging in again.");
-				return;
-			}
-
 			const { id, recentActivity, ...rest } = updatedWallet;
 			void recentActivity;
-			const walletData = {
-				...rest,
-				user_id: user.id,
-				currency: updatedWallet.currency,
-				type: updatedWallet.type,
-			};
-
-			const { error } = await supabase
-				.from("wallets")
-				.update(walletData)
-				.eq("id", id)
-				.eq("user_id", user.id)
-				.select();
-
-			if (error) {
-				toast.error(`Failed to update wallet: ${error.message}`);
-				return;
-			}
+			await updateWallet(supabase, {
+				id,
+				name: rest.name,
+				balance: rest.balance,
+				currency: rest.currency,
+				type: rest.type,
+				icon: rest.icon,
+				color: rest.color,
+				include_in_total: rest.include_in_total,
+				notes: rest.notes,
+			});
 
 			setIsEditModalOpen(false);
 			const refreshSuccess = await fetchWallets();
 			if (refreshSuccess) toast.success("Wallet updated successfully!");
-		} catch {
-			toast.error("An unexpected error occurred.");
+		} catch (error) {
+			if (error instanceof AuthRequiredError) {
+				toast.error(error.message);
+			} else {
+				toast.error("An unexpected error occurred.");
+			}
 		}
 	};
 
 	const handleAddWallet = async (newWallet: Wallet) => {
 		try {
-			const {
-				data: { user },
-				error: userError,
-			} = await supabase.auth.getUser();
-
-			if (userError || !user) {
-				toast.error("Authentication error. Please try logging in again.");
-				return;
-			}
-
-			const walletData = { ...newWallet } as Partial<Wallet>;
-			delete walletData.id;
-			delete walletData.recentActivity;
-			const { error } = await supabase
-				.from("wallets")
-				.insert([{ ...walletData, user_id: user.id }])
-				.select();
-
-			if (error) {
-				toast.error(`Failed to add wallet: ${error.message}`);
-				return;
-			}
+			const { id: _id, recentActivity, ...walletData } = newWallet;
+			void _id;
+			void recentActivity;
+			await createWallet(supabase, walletData);
 
 			setIsAddModalOpen(false);
 			const refreshSuccess = await fetchWallets();
 			if (refreshSuccess) toast.success("Wallet added successfully!");
-		} catch {
-			toast.error("An unexpected error occurred.");
+		} catch (error) {
+			if (error instanceof AuthRequiredError) {
+				toast.error(error.message);
+			} else {
+				toast.error("An unexpected error occurred.");
+			}
 		}
 	};
 

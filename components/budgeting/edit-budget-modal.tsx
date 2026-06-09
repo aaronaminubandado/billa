@@ -30,20 +30,18 @@ import {
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { TrashIcon } from "lucide-react";
 import { toast } from "sonner";
+import type { EditBudgetInput } from "@/lib/data/budgets";
+import type { BudgetListItem } from "@/lib/types";
 
 interface EditBudgetModalProps {
   isOpen: boolean;
   onClose: () => void;
-  budget: {
-    id: number;
-    amount: number;
-    category: { id: number; name: string; icon: string; color: string };
-    period: string;
-    used: number;
+  budget: BudgetListItem & {
+    category: { id: string; name: string; icon: string; color: string };
   };
-  onUpdate: (budget: { id: number; amount: number; categoryId: number; period: string }) => void;
-  onDelete: (id: number) => void;
-  categories: { id: number; name: string; icon: string; color: string }[];
+  onUpdate: (budget: EditBudgetInput) => void;
+  onDelete: (id: string) => void;
+  categories: { id: string; name: string; icon: string; color: string }[];
 }
 
 export function EditBudgetModal({
@@ -79,7 +77,6 @@ export function EditBudgetModal({
     onUpdate({
       id: budget.id,
       amount: parseFloat(amount),
-      categoryId: parseInt(categoryId),
       period,
     });
   };

@@ -18,43 +18,22 @@ import { BudgetCategoryGroup } from "@/components/budgeting/budget-category-grou
 import { BudgetSummaryChart } from "@/components/budgeting/budget-summary-chart";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
+import {
+	createBudget,
+	deleteBudget,
+	listBudgetsGroupedByCategory,
+	updateBudget,
+	type BudgetData,
+	type EditBudgetInput,
+	type NewBudgetInput,
+} from "@/lib/data/budgets";
+import type { BudgetListItem } from "@/lib/types";
+import { AuthRequiredError } from "@/lib/data/auth";
 
-// Interfaces
-interface Budget {
-	id: number;
-	name: string;
-	amount: number;
-	used: number;
-	period: string;
-}
+type Budget = BudgetListItem;
 
-interface BudgetCategory {
-	id: number;
-	name: string;
-	icon: string;
-	color: string;
-}
-
-interface BudgetData {
-	category: BudgetCategory;
-	budgets: Budget[];
-}
-
-// New interfaces for input types
-interface NewBudgetInput {
-	categoryId: string;
-	amount: number;
-	period: string;
-}
-
-interface EditBudgetInput {
-	id: number;
-	amount: number;
-	period: string;
-}
-
-interface BudgetWithCategory extends Budget {
-	category: BudgetCategory;
+interface BudgetWithCategory extends BudgetListItem {
+	category: BudgetData["category"];
 }
 
 export default function BudgetPage() {
@@ -69,72 +48,17 @@ export default function BudgetPage() {
 
 	//Fetch budgets function
 	const fetchBudgets = async () => {
-		const {
-			data: { user },
-			error: userError,
-		} = await supabase.auth.getUser();
-
-		if (userError || !user) {
-			toast.error("Failed to load user.");
-			return;
-		}
-
-		const { data: budgets, error } = await supabase
-			.from("budgets")
-			.select("*, category:categories(*)")
-			.eq("user_id", user.id)
-			.order("created_at", { ascending: false });
-
-		if (error) {
-			toast.error("Failed to fetch budgets.");
-			console.error(error);
-			return;
-		}
-
-		// Prepare grouped budgets array
-		const grouped: BudgetData[] = [];
-
-		// Fetch all spending data in parallel
-		const spendingPromises = budgets.map((budget) =>
-			getCategorySpending(
-				budget.category_id,
-				budget.period,
-				budget.start_date
-			)
-		);
-		const spendingResults = await Promise.all(spendingPromises);
-
-		for (let i = 0; i < budgets.length; i++) {
-			const budget = budgets[i];
-			const cat = budget.category;
-			const used = spendingResults[i];
-
-			const budgetItem: Budget = {
-				id: budget.id,
-				name: budget.name,
-				amount: parseFloat(budget.amount),
-				used,
-				period: budget.period,
-			};
-
-			// Check if category group already exists
-			const group = grouped.find((g) => g.category.id === cat.id);
-			if (group) {
-				group.budgets.push(budgetItem);
+		try {
+			const grouped = await listBudgetsGroupedByCategory(supabase);
+			setBudgetData(grouped);
+		} catch (error) {
+			if (error instanceof AuthRequiredError) {
+				toast.error(error.message);
 			} else {
-				grouped.push({
-					category: {
-						id: cat.id,
-						name: cat.name,
-						icon: cat.icon,
-						color: cat.color,
-					},
-					budgets: [budgetItem],
-				});
+				toast.error("Failed to fetch budgets.");
+				console.error(error);
 			}
 		}
-
-		setBudgetData(grouped);
 	};
 
 	useEffect(() => {
@@ -143,153 +67,58 @@ export default function BudgetPage() {
 
 	// Add budget and refresh
 	const handleAddBudget = async (newBudget: NewBudgetInput) => {
-		const {
-			data: { user },
-			error: userError,
-		} = await supabase.auth.getUser();
-
-		if (userError || !user) {
-			toast.error("User not authenticated.");
-			return;
+		try {
+			await createBudget(supabase, newBudget);
+			toast.success("Budget added successfully!");
+			setIsAddModalOpen(false);
+			await fetchBudgets();
+		} catch (error) {
+			if (error instanceof AuthRequiredError) {
+				toast.error(error.message);
+			} else {
+				toast.error("Failed to add budget.");
+				console.error(error);
+			}
 		}
-
-		const { error } = await supabase.from("budgets").insert([
-			{
-				user_id: user.id,
-				amount: newBudget.amount,
-				category_id: newBudget.categoryId,
-				period: newBudget.period,
-				start_date: new Date(),
-			},
-		]);
-
-		if (error) {
-			toast.error("Failed to add budget.");
-			console.error(error);
-			return;
-		}
-
-		toast.success("Budget added successfully!");
-		setIsAddModalOpen(false);
-		await fetchBudgets();
 	};
 
-	// Edit budget and refresh
 	const handleEditBudget = async (updatedBudget: EditBudgetInput) => {
-		const {
-			data: { user },
-			error: userError,
-		} = await supabase.auth.getUser();
-
-		if (userError || !user) {
-			toast.error("User not authenticated.");
-			return;
+		try {
+			await updateBudget(supabase, updatedBudget);
+			toast.success("Budget edited successfully!");
+			setIsEditModalOpen(false);
+			await fetchBudgets();
+		} catch (error) {
+			if (error instanceof AuthRequiredError) {
+				toast.error(error.message);
+			} else {
+				toast.error("Failed to update budget.");
+				console.error(error);
+			}
 		}
-
-		const { error } = await supabase
-			.from("budgets")
-			.update({
-				amount: updatedBudget.amount,
-				period: updatedBudget.period,
-			})
-			.eq("id", updatedBudget.id)
-			.eq("user_id", user.id);
-
-		if (error) {
-			toast.error("Failed to update budget.");
-			console.error(error);
-			return;
-		}
-
-		toast.success("Budget edited successfully!");
-		setIsEditModalOpen(false);
-		await fetchBudgets();
 	};
 
-	// Delete budget and refresh
-	const handleDeleteBudget = async (budgetId: number) => {
-		const {
-			data: { user },
-			error: userError,
-		} = await supabase.auth.getUser();
-
-		if (userError || !user) {
-			toast.error("User not authenticated.");
-			return;
+	const handleDeleteBudget = async (budgetId: string) => {
+		try {
+			await deleteBudget(supabase, budgetId);
+			toast.success("Budget deleted successfully!");
+			setIsEditModalOpen(false);
+			await fetchBudgets();
+		} catch (error) {
+			if (error instanceof AuthRequiredError) {
+				toast.error(error.message);
+			} else {
+				toast.error("Failed to delete budget.");
+				console.error(error);
+			}
 		}
-
-		const { error } = await supabase
-			.from("budgets")
-			.delete()
-			.eq("id", budgetId)
-			.eq("user_id", user.id);
-
-		if (error) {
-			toast.error("Failed to delete budget.");
-			console.error(error);
-			return;
-		}
-
-		toast.success("Budget deleted successfully!");
-		setIsEditModalOpen(false);
-		await fetchBudgets();
-	};
-
-	// Fetch total spending for a category in the active budget period.
-	const getCategorySpending = async (
-		categoryId: string,
-		period: string,
-		start_date: string
-	) => {
-		const {
-			data: { user },
-		} = await supabase.auth.getUser();
-
-		if (!user) return 0;
-
-		// Compute DATE RANGE for this budget
-		const rangeStart = new Date(start_date);
-		let rangeEnd = new Date();
-
-		switch (period) {
-			case "weekly":
-				rangeEnd = new Date(rangeStart);
-				rangeEnd.setDate(rangeStart.getDate() + 7);
-				break;
-			case "monthly":
-				rangeEnd = new Date(rangeStart);
-				rangeEnd.setMonth(rangeStart.getMonth() + 1);
-				break;
-			case "yearly":
-				rangeEnd = new Date(rangeStart);
-				rangeEnd.setFullYear(rangeStart.getFullYear() + 1);
-				break;
-		}
-
-		const { data, error } = await supabase
-			.from("transactions")
-			.select("amount, type, status")
-			.eq("user_id", user.id)
-			.eq("category_id", categoryId)
-			.eq("status", "active")
-			.eq("type", "expense")
-			.gte("created_at", rangeStart.toISOString())
-			.lte("created_at", rangeEnd.toISOString());
-
-		if (error) {
-			console.error("Failed to load transactions", error);
-			return 0;
-		}
-
-		// Only count EXPENSES.
-		// Ignore cancelled or reversed transactions.
-		return data
-			.filter((t) => t.type === "expense")
-			.reduce((sum, t) => sum + Number(t.amount), 0);
 	};
 
 	// Open edit modal with selected budget
-	const openEditModal = (budget: Budget, category: BudgetCategory) => {
+	const openEditModal = (
+		budget: Budget,
+		category: BudgetData["category"]
+	) => {
 		setCurrentBudget({ ...budget, category });
 		setIsEditModalOpen(true);
 	};

@@ -27,6 +27,11 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import type { Category, Transaction, Wallet } from "@/lib/types";
+import {
+	listCategoriesForUser,
+	listWalletsForUser,
+} from "@/lib/data/transactions";
+import { AuthRequiredError } from "@/lib/data/auth";
 
 interface EditTransactionModalProps {
 	isOpen: boolean;
@@ -73,43 +78,25 @@ export function EditTransactionModal({
 
 	useEffect(() => {
 		const fetchData = async () => {
-			const {
-				data: { user },
-				error: userError,
-			} = await supabase.auth.getUser();
-
-			if (userError || !user) {
-				console.error("Error fetching user:", userError?.message);
-				return;
-			}
-
 			try {
-				// Fetch user wallets
-				const { data: walletData, error: walletError } = await supabase
-					.from("wallets")
-					.select("*")
-					.eq("user_id", user.id);
-
-				if (walletError) throw walletError;
-				setWallets(walletData || []);
-
-				// Fetch user categories
-				const { data: categoryData, error: categoryError } =
-					await supabase
-						.from("categories")
-						.select("*")
-						.eq("user_id", user.id);
-
-				if (categoryError) throw categoryError;
-				setCategories(categoryData || []);
+				const [walletData, categoryData] = await Promise.all([
+					listWalletsForUser(supabase),
+					listCategoriesForUser(supabase),
+				]);
+				setWallets(walletData);
+				setCategories(categoryData);
 			} catch (err) {
+				if (err instanceof AuthRequiredError) {
+					console.error("Error fetching user:", err.message);
+					return;
+				}
 				const message = err instanceof Error ? err.message : "Unknown error";
 				console.error("Error fetching data:", message);
 			}
 		};
 
 		if (isOpen) fetchData();
-	}, [isOpen]);
+	}, [isOpen, supabase]);
 
 	const handleOpenChange = (open: boolean) => {
 		if (!open) {

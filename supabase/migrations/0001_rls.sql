@@ -114,13 +114,47 @@ CREATE POLICY "transactions_select_own" ON public.transactions
 DROP POLICY IF EXISTS "transactions_insert_own" ON public.transactions;
 CREATE POLICY "transactions_insert_own" ON public.transactions
   FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (
+    auth.uid() = user_id
+    AND EXISTS (
+      SELECT 1
+      FROM public.wallets w
+      WHERE w.id = wallet_id
+        AND w.user_id = auth.uid()
+    )
+    AND (
+      category_id IS NULL
+      OR EXISTS (
+        SELECT 1
+        FROM public.categories c
+        WHERE c.id = category_id
+          AND c.user_id = auth.uid()
+      )
+    )
+  );
 
 DROP POLICY IF EXISTS "transactions_update_own" ON public.transactions;
 CREATE POLICY "transactions_update_own" ON public.transactions
   FOR UPDATE TO authenticated
   USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (
+    auth.uid() = user_id
+    AND EXISTS (
+      SELECT 1
+      FROM public.wallets w
+      WHERE w.id = wallet_id
+        AND w.user_id = auth.uid()
+    )
+    AND (
+      category_id IS NULL
+      OR EXISTS (
+        SELECT 1
+        FROM public.categories c
+        WHERE c.id = category_id
+          AND c.user_id = auth.uid()
+      )
+    )
+  );
 
 DROP POLICY IF EXISTS "transactions_delete_own" ON public.transactions;
 CREATE POLICY "transactions_delete_own" ON public.transactions
@@ -139,13 +173,29 @@ CREATE POLICY "budgets_select_own" ON public.budgets
 DROP POLICY IF EXISTS "budgets_insert_own" ON public.budgets;
 CREATE POLICY "budgets_insert_own" ON public.budgets
   FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (
+    auth.uid() = user_id
+    AND EXISTS (
+      SELECT 1
+      FROM public.categories c
+      WHERE c.id = category_id
+        AND c.user_id = auth.uid()
+    )
+  );
 
 DROP POLICY IF EXISTS "budgets_update_own" ON public.budgets;
 CREATE POLICY "budgets_update_own" ON public.budgets
   FOR UPDATE TO authenticated
   USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (
+    auth.uid() = user_id
+    AND EXISTS (
+      SELECT 1
+      FROM public.categories c
+      WHERE c.id = category_id
+        AND c.user_id = auth.uid()
+    )
+  );
 
 DROP POLICY IF EXISTS "budgets_delete_own" ON public.budgets;
 CREATE POLICY "budgets_delete_own" ON public.budgets
@@ -164,13 +214,53 @@ CREATE POLICY "goals_select_own" ON public.goals
 DROP POLICY IF EXISTS "goals_insert_own" ON public.goals;
 CREATE POLICY "goals_insert_own" ON public.goals
   FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (
+    auth.uid() = user_id
+    AND (
+      wallet_id IS NULL
+      OR EXISTS (
+        SELECT 1
+        FROM public.wallets w
+        WHERE w.id = wallet_id
+          AND w.user_id = auth.uid()
+      )
+    )
+    AND (
+      category_id IS NULL
+      OR EXISTS (
+        SELECT 1
+        FROM public.categories c
+        WHERE c.id = category_id
+          AND c.user_id = auth.uid()
+      )
+    )
+  );
 
 DROP POLICY IF EXISTS "goals_update_own" ON public.goals;
 CREATE POLICY "goals_update_own" ON public.goals
   FOR UPDATE TO authenticated
   USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (
+    auth.uid() = user_id
+    AND (
+      wallet_id IS NULL
+      OR EXISTS (
+        SELECT 1
+        FROM public.wallets w
+        WHERE w.id = wallet_id
+          AND w.user_id = auth.uid()
+      )
+    )
+    AND (
+      category_id IS NULL
+      OR EXISTS (
+        SELECT 1
+        FROM public.categories c
+        WHERE c.id = category_id
+          AND c.user_id = auth.uid()
+      )
+    )
+  );
 
 DROP POLICY IF EXISTS "goals_delete_own" ON public.goals;
 CREATE POLICY "goals_delete_own" ON public.goals

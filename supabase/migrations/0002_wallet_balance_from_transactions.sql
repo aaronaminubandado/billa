@@ -56,6 +56,12 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.transaction_balance_delta(TEXT, NUMERIC, TEXT)
+  FROM PUBLIC, anon, authenticated;
+
+REVOKE ALL ON FUNCTION public.apply_wallet_balance_delta(UUID, NUMERIC)
+  FROM PUBLIC, anon, authenticated;
+
 -- =============================================================================
 -- Block manual balance edits on wallets (allow sync from transaction triggers)
 -- =============================================================================
@@ -77,6 +83,9 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.prevent_manual_wallet_balance_update()
+  FROM PUBLIC, anon, authenticated;
 
 DROP TRIGGER IF EXISTS wallets_prevent_manual_balance_update ON public.wallets;
 
@@ -128,6 +137,9 @@ BEGIN
   RETURN NULL;
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.sync_wallet_balance_from_transaction()
+  FROM PUBLIC, anon, authenticated;
 
 DROP TRIGGER IF EXISTS transactions_sync_wallet_balance ON public.transactions;
 

@@ -104,4 +104,4 @@ Project ref is public (same as `NEXT_PUBLIC_SUPABASE_URL`). Access token stays i
 
 ## Known limitation
 
-RLS policies enforce row ownership via `user_id` / `id`. They do **not** verify that foreign keys (e.g. `transactions.wallet_id`) belong to the same user. Optional follow-up hardening in a future migration.
+RLS policies enforce row ownership via `user_id` / `id` and validate that referenced `wallet_id` / `category_id` values belong to the same user on `transactions`, `budgets`, and `goals` INSERT/UPDATE policies in [`0001_rls.sql`](migrations/0001_rls.sql).

@@ -288,8 +288,9 @@ _Success. No rows returned
 - [ ] Optional: `ALTER TABLE budgets ADD COLUMN IF NOT EXISTS name TEXT` — UI reads `budget.name` but inserts omit it today
 
 - [x] Run `migrations/0002_wallet_balance_from_transactions.sql` — **reason:** block manual balance edits; sync balance from transactions (replaces legacy wallet UPDATE policy intent)
+- [x] Run `migrations/0003_schema_reconcile.sql` — **reason:** add `budgets.name`, `goals.due_date`, `categories.type` where missing (see [`SCHEMA_DRIFT.md`](../SCHEMA_DRIFT.md))
 
-**Apply order:** `0000_schema` → `0000b_drop_legacy_policies` → `0001_rls` → `0002_wallet_balance_from_transactions` → re-run `audit_rls.sql`
+**Apply order:** `0000_schema` → `0000b_drop_legacy_policies` → `0001_rls` → `0002_wallet_balance_from_transactions` → `0003_schema_reconcile` → re-run `audit_rls.sql`
 
 ---
 

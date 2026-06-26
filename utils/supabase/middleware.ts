@@ -37,16 +37,30 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  const authRoutes = ["/login", "/register", "/forgot-password"].includes(
+    request.nextUrl.pathname
+  )
+
+  const copyCookies = (response: NextResponse) => {
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      response.cookies.set(cookie)
+    })
+    return response
+  }
+
+  if (user && authRoutes) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/"
+    return copyCookies(NextResponse.redirect(url))
+  }
+
   if (
     !user &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/register')&&
-    !request.nextUrl.pathname.startsWith('/forgot-password')
+    !authRoutes
   ) {
-    // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    return NextResponse.redirect(url)
+    return copyCookies(NextResponse.redirect(url))
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.

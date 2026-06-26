@@ -20,15 +20,12 @@ import {
 } from "@/components/ui/select";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { toast } from "sonner";
-
-interface NewBudgetInput {
-	categoryId: string;
-	amount: number;
-	period: string;
-}
+import type { NewBudgetInput } from "@/lib/data/budgets";
+import { listCategoriesForUser } from "@/lib/data/transactions";
+import { AuthRequiredError } from "@/lib/data/auth";
 
 interface BudgetCategory {
-	id: number;
+	id: string;
 	name: string;
 	icon: string;
 	color: string;
@@ -54,35 +51,35 @@ export function AddBudgetModal({
 	const supabase = createClient();
 
 	useEffect(() => {
+		if (!isOpen) return;
+
 		const fetchCategories = async () => {
-			const {
-				data: { user },
-				error: userError,
-			} = await supabase.auth.getUser();
-
-			if (userError || !user) {
-				toast.error("Failed to load user.");
-				return;
-			}
-
 			setLoading(true);
 			setError(null);
-			const { data, error } = await supabase
-				.from("categories")
-				.select("id, name, icon, color")
-				.eq("user_id", user.id);
-
-			if (error) {
-				console.error("Failed to fetch categories:", error.message);
-				setError("Could not load categories.");
-			} else {
-				setCategories(data || []);
+			try {
+				const data = await listCategoriesForUser(supabase);
+				setCategories(
+					data.map((category) => ({
+						id: category.id,
+						name: category.name,
+						icon: category.icon,
+						color: category.color,
+					}))
+				);
+			} catch (err) {
+				if (err instanceof AuthRequiredError) {
+					toast.error(err.message);
+				} else {
+					console.error("Failed to fetch categories:", err);
+					setError("Could not load categories.");
+				}
+			} finally {
+				setLoading(false);
 			}
-			setLoading(false);
 		};
 
-		fetchCategories();
-	}, [isOpen]);
+		void fetchCategories();
+	}, [isOpen, supabase]);
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();

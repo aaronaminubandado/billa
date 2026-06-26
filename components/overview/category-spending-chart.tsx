@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
+import React, { useMemo } from "react";
 import {
 	PieChart,
 	Pie,
@@ -15,22 +14,7 @@ import {
 	Legend,
 	ResponsiveContainer,
 } from "recharts";
-
-// TYPES
-interface Category {
-	id: string;
-	name: string;
-	color: string;
-	icon: string | null;
-}
-
-interface TransactionRow {
-	category_id: string | null;
-	amount: number;
-	type: "income" | "expense";
-	created_at: string;
-	categories: Category | null;
-}
+import type { DashboardTransaction } from "@/hooks/use-dashboard-transactions";
 
 interface SpendingCategory {
 	id: string;
@@ -43,67 +27,10 @@ interface SpendingCategory {
 interface CategorySpendingChartProps {
 	type: "pie" | "bar";
 	timePeriod: string;
+	transactions: DashboardTransaction[];
+	loading?: boolean;
 }
 
-// FETCH FROM SUPABASE
-const fetchSpendingRows = async (
-	supabase: ReturnType<typeof createClient>,
-	periodStart: string,
-	userId: string
-): Promise<TransactionRow[]> => {
-	const { data, error } = await supabase
-		.from("transactions")
-		.select(
-			`
-      category_id,
-      amount,
-      type,
-      created_at,
-      categories ( id, name, color, icon )
-    `
-		)
-		.gte("created_at", periodStart)
-		.eq("type", "expense")
-		.eq("user_id", userId);
-
-	if (error) {
-		console.error("Failed to fetch spending data:");
-		return [];
-	}
-
-	return (data ?? []).map((row: any) => ({
-		...row,
-		categories: row.categories ?? null,
-	})) as TransactionRow[];
-};
-
-// AGGREGATE TOTAL SPENDING PER CATEGORY
-const computeCategorySpending = (
-	rows: TransactionRow[]
-): SpendingCategory[] => {
-	const stats: Record<string, SpendingCategory> = {};
-
-	for (const row of rows) {
-		const cat = row.categories;
-		if (!cat) continue;
-
-		if (!stats[cat.id]) {
-			stats[cat.id] = {
-				id: cat.id,
-				name: cat.name,
-				icon: cat.icon,
-				color: cat.color,
-				totalAmount: 0,
-			};
-		}
-
-		stats[cat.id].totalAmount += row.amount;
-	}
-
-	return Object.values(stats).sort((a, b) => b.totalAmount - a.totalAmount);
-};
-
-// TIME PERIOD HANDLER
 const getPeriodStart = (period: string): Date => {
 	const now = new Date();
 	const copy = new Date(now);
@@ -128,9 +55,43 @@ const getPeriodStart = (period: string): Date => {
 	return copy;
 };
 
-// TOOLTIP
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const CustomTooltip = ({ active, payload }: any) => {
+const computeCategorySpending = (
+	transactions: DashboardTransaction[],
+	timePeriod: string
+): SpendingCategory[] => {
+	const periodStart = getPeriodStart(timePeriod).getTime();
+	const stats: Record<string, SpendingCategory> = {};
+
+	for (const row of transactions) {
+		if (row.type !== "expense") continue;
+		if (new Date(row.created_at).getTime() < periodStart) continue;
+
+		const cat = row.categories;
+		if (!cat) continue;
+
+		if (!stats[cat.id]) {
+			stats[cat.id] = {
+				id: cat.id,
+				name: cat.name,
+				icon: cat.icon,
+				color: cat.color,
+				totalAmount: 0,
+			};
+		}
+
+		stats[cat.id].totalAmount += row.amount;
+	}
+
+	return Object.values(stats).sort((a, b) => b.totalAmount - a.totalAmount);
+};
+
+const CustomTooltip = ({
+	active,
+	payload,
+}: {
+	active?: boolean;
+	payload?: Array<{ payload: SpendingCategory }>;
+}) => {
 	if (active && payload && payload.length) {
 		const row = payload[0].payload;
 
@@ -148,41 +109,25 @@ const CustomTooltip = ({ active, payload }: any) => {
 	return null;
 };
 
-// MAIN COMPONENT
 export function CategorySpendingChart({
 	type,
 	timePeriod,
+	transactions,
+	loading = false,
 }: CategorySpendingChartProps) {
-	const supabase = createClient();
-	const [data, setData] = useState<SpendingCategory[]>([]);
+	const data = useMemo(
+		() => computeCategorySpending(transactions, timePeriod),
+		[transactions, timePeriod]
+	);
 
-	useEffect(() => {
-		let cancelled = false;
-		const load = async () => {
-			const {
-				data: { user },
-			} = await supabase.auth.getUser();
-			if (!user || cancelled) return;
+	if (loading) {
+		return (
+			<div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+				Loading chart...
+			</div>
+		);
+	}
 
-			const periodStart = getPeriodStart(timePeriod).toISOString();
-			const rows = await fetchSpendingRows(
-				supabase,
-				periodStart,
-				user.id
-			);
-			if (cancelled) return;
-			const stats = computeCategorySpending(rows);
-
-			setData(stats);
-		};
-
-		load();
-		return () => {
-			cancelled = true;
-		};
-	}, [timePeriod, supabase]);
-
-	// PIE CHART
 	if (type === "pie") {
 		return (
 			<ResponsiveContainer width="100%" height="100%">
@@ -210,7 +155,6 @@ export function CategorySpendingChart({
 		);
 	}
 
-	// BAR CHART
 	return (
 		<ResponsiveContainer width="100%" height="100%">
 			<BarChart

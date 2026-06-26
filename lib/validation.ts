@@ -16,3 +16,36 @@ export const formSchema = z.object({
 
 
 export type SignupFormData = z.infer<typeof formSchema>;
+
+export type AuthActionResult =
+  | { success: true; message?: string }
+  | { success: false; error: string; fieldErrors?: Record<string, string> };
+
+export function parseAuthForm<T extends z.ZodTypeAny>(
+  schema: T,
+  data: unknown
+):
+  | { success: true; data: z.infer<T> }
+  | { success: false; result: AuthActionResult } {
+  const parsed = schema.safeParse(data);
+
+  if (parsed.success) {
+    return { success: true, data: parsed.data };
+  }
+
+  const fieldErrors = Object.fromEntries(
+    parsed.error.issues.map((issue) => [
+      issue.path.join('.'),
+      issue.message,
+    ])
+  );
+
+  return {
+    success: false,
+    result: {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? 'Validation failed',
+      fieldErrors,
+    },
+  };
+}

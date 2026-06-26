@@ -1,22 +1,21 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
 	ArrowUpIcon,
 	ArrowDownIcon,
 	DollarSignIcon,
 	PiggyBankIcon,
-	TrendingUpIcon,
-	TrendingDownIcon,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { formatCurrency, getDateRange } from "@/lib/utils";
-import { createClient } from "@/utils/supabase/client";
+import { cn, formatCurrency, getDateRange } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { DashboardTransaction } from "@/hooks/use-dashboard-transactions";
 
 interface DashboardMetricsProps {
 	timePeriod: string;
+	transactions: DashboardTransaction[];
+	loading?: boolean;
 }
 
 interface MetricsData {
@@ -30,86 +29,67 @@ interface MetricsData {
 	expensesChange: number;
 }
 
-export function DashboardMetrics({ timePeriod }: DashboardMetricsProps) {
-	const supabase = createClient();
-	const [metrics, setMetrics] = useState<MetricsData | null>(null);
-	const [loading, setLoading] = useState(true);
+function computeMetrics(
+	transactions: DashboardTransaction[],
+	timePeriod: string
+): MetricsData | null {
+	const { start, end } = getDateRange(timePeriod);
+	const startMs = new Date(start).getTime();
+	const endMs = new Date(end).getTime();
 
-	const fetchMetrics = async () => {
-		const {
-			data: { user },
-		} = await supabase.auth.getUser();
-		if (!user) {
-			setLoading(false);
-			return;
+	const inRange = transactions.filter((t) => {
+		const created = new Date(t.created_at).getTime();
+		return created >= startMs && created <= endMs;
+	});
+
+	let totalIncome = 0;
+	let totalExpenses = 0;
+	const categoryTotals: Record<string, number> = {};
+
+	inRange.forEach((t) => {
+		if (t.type === "income") {
+			totalIncome += t.amount;
+		} else if (t.type === "expense") {
+			totalExpenses += t.amount;
+			const catName = t.categories?.name ?? "Unknown";
+			categoryTotals[catName] = (categoryTotals[catName] || 0) + t.amount;
 		}
+	});
 
-		const { start, end } = getDateRange(timePeriod);
+	const balance = totalIncome - totalExpenses;
+	const savingsRate =
+		totalIncome > 0 ? Number(((balance / totalIncome) * 100).toFixed(1)) : 0;
 
-		const { data: transactions, error } = await supabase
-			.from("transactions")
-			.select("amount, type, category_id, categories(name)")
-			.eq("user_id", user.id)
-			.gte("created_at", start)
-			.lte("created_at", end);
-
-		if (error) {
-			console.error(error);
-			setLoading(false);
-			return;
+	let topExpenseCategory = "None";
+	let topExpenseAmount = 0;
+	for (const [cat, amt] of Object.entries(categoryTotals)) {
+		if (amt > topExpenseAmount) {
+			topExpenseCategory = cat;
+			topExpenseAmount = amt;
 		}
+	}
 
-		let totalIncome = 0;
-		let totalExpenses = 0;
-		const categoryTotals: Record<string, number> = {};
-
-		transactions.forEach((t: any) => {
-			if (t.type === "income") {
-				totalIncome += t.amount;
-			} else if (t.type === "expense") {
-				totalExpenses += t.amount;
-				const catName = t.categories?.name ?? "Unknown";
-				categoryTotals[catName] = (categoryTotals[catName] || 0) + t.amount;
-			}
-		});
-
-		const balance = totalIncome - totalExpenses;
-		const savingsRate =
-			totalIncome > 0 ? Number(((balance / totalIncome) * 100).toFixed(1)) : 0;
-
-		let topExpenseCategory = "None";
-		let topExpenseAmount = 0;
-		for (const [cat, amt] of Object.entries(categoryTotals)) {
-			if (amt > topExpenseAmount) {
-				topExpenseCategory = cat;
-				topExpenseAmount = amt;
-			}
-		}
-
-		setMetrics({
-			totalIncome,
-			totalExpenses,
-			balance,
-			savingsRate,
-			topExpenseCategory,
-			topExpenseAmount,
-			incomeChange: 0,
-			expensesChange: 0,
-		});
-		setLoading(false);
+	return {
+		totalIncome,
+		totalExpenses,
+		balance,
+		savingsRate,
+		topExpenseCategory,
+		topExpenseAmount,
+		incomeChange: 0,
+		expensesChange: 0,
 	};
+}
 
-	useEffect(() => {
-		setLoading(true);
-		let isCurrent = true;
-		const load = async () => {
-			if (isCurrent) await fetchMetrics();
-		};
-		load();
-		return () => {
-			isCurrent = false;
-		};
-	}, [timePeriod]);
+export function DashboardMetrics({
+	timePeriod,
+	transactions,
+	loading = false,
+}: DashboardMetricsProps) {
+	const metrics = useMemo(
+		() => computeMetrics(transactions, timePeriod),
+		[transactions, timePeriod]
+	);
 
 	if (loading) {
 		return (

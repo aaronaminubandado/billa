@@ -4,23 +4,17 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EditIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import type { BudgetListItem } from "@/lib/types";
 
 interface BudgetCategoryGroupProps {
 	category: {
-		id: number;
+		id: string;
 		name: string;
 		icon: string;
 		color: string;
 	};
-	budgets: Array<{
-		id: number;
-		name: string;
-		amount: number;
-		used: number;
-		period: string;
-	}>;
-	onEditBudget: (budget: any) => void;
+	budgets: BudgetListItem[];
+	onEditBudget: (budget: BudgetListItem) => void;
 }
 
 export function BudgetCategoryGroup({

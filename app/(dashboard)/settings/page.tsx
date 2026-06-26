@@ -26,7 +26,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   UserIcon,
   BellIcon,
-  GlobeIcon,
   ShieldIcon,
   PaletteIcon,
 } from "lucide-react";
